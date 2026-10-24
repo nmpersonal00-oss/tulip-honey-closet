@@ -1,14 +1,9 @@
-# Tulip & Honey Closet — Glossy Polaroid (Save Button Fixed)
+Tulip & Honey Closet — Enchanted Dressing Room edition
 
-Open **index.html** in Chrome/Safari or deploy to GitHub Pages. Both closet tabs, Polaroid photos, captions, editing, rain, and cloud settings remain available.
+New: open Outfits in either closet. Tap clothing from the rack, move it around the mirror, enlarge/shrink/layer, then name and save an outfit. Each person has their own outfit idea gallery, but both use the same shared login. Original clothing stays unchanged.
 
-## What changed
-- Fixed the Save button crash in restricted preview browsers that do not have `crypto.randomUUID()`.
-- Clothing name is optional when a caption is supplied; an automatic name is used if both are blank.
-- Saving tries IndexedDB, then localStorage; if both are blocked by the preview, the Polaroid appears temporarily, and a visible warning recommends exporting a Backup. Temporary preview content is **not** preserved between browser sessions.
-- Errors now show under the Save button instead of failing silently.
+Storage: the optional new Supabase public.closet_outfit_ideas table has user-scoped RLS; local mode saves ideas in localStorage. Photos are referenced from the existing private closet bucket, not re-uploaded.
 
-## Storage
-Browser-only items are stored **on that device and website origin**, not synced. Clear site data/private browsing can erase them. Take regular JSON backups. For durable cross-device sync, open on GitHub Pages and sign into the preconfigured Supabase cloud account. Use **Copy browser Polaroids to cloud** for existing browser photos. Upload and private cloud save depend on network access, a valid account and Supabase permissions.
-
-If you opened an older version in another preview address, items saved at that other origin might not appear; use Backup/Restore to transfer.
+To preview: open index.html, select Outfits.
+To publish: upload the index.html file to the root of nmpersonal00-oss/tulip-honey-closet and replace the existing file. All existing favicon and icon files remain as they are.
+This version is prepared as a reviewable download so you can confirm the dressing room before replacing the working GitHub closet.
