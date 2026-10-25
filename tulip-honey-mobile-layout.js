@@ -1,5 +1,5 @@
 /*
- * Tulip & Honey Closet — iPhone layout only, v1.
+ * Tulip & Honey Closet — iPhone layout only, v5 (dropdown + independent scrolling).
  * Original wardrobe records, storage, Supabase authentication and cloud code remain untouched.
  * Desktop layout remains unchanged. No external resources or analytics are loaded.
  * Reversible: remove this file's <script> tag from index.html.
@@ -118,6 +118,49 @@
     stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
   .app>.footer { margin-bottom:8px; }
 }
+/* V5: Keep iPhone page stationary, let the Polaroid wall and secondary tabs scroll independently. */
+#thMobileBrowse {display:none;}
+@media ${MOBILE_QUERY} {
+  html, body {height:100%;min-height:0;overflow:hidden;overscroll-behavior:none;}
+  .app {display:flex;flex-direction:column;height:100dvh;min-height:0;max-height:100dvh;
+    overflow:hidden;padding:12px 12px calc(92px + env(safe-area-inset-bottom));}
+  .app>header {flex:0 0 auto;min-height:0;}
+  .app>.hero {display:none!important;}
+  .app>.layout {flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:0;
+    overflow:hidden;margin-top:12px;}
+  .app>.layout>.panel.side {display:none!important;}
+  .app>.layout>main.panel {display:flex;flex-direction:column;flex:1 1 0;
+    min-height:0;overflow:hidden;padding:14px 12px 9px;}
+  .app>.layout>main.panel>.mainhead,
+  .app>.layout>main.panel>.controls,
+  .app>.layout>main.panel>#thMobileBrowse {flex:0 0 auto;}
+  .app>.layout>main.panel>.controls {margin:11px 0 10px;}
+  #thMobileBrowse {display:flex;align-items:center;gap:10px;padding:9px 11px;
+    margin:0 0 10px;border-radius:16px;background:linear-gradient(135deg,var(--glow),var(--accent-soft));
+    border:1px solid #fff9;box-shadow:inset 0 1px 0 #fff;}
+  #thMobileBrowse label {flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:3px;
+    color:var(--accent-ink);font-weight:700;font-size:12px;}
+  #thMobileBrowse label small {font-weight:400;font-size:10px;opacity:.8;}
+  #thMobileCategorySelect {flex:0 1 58%;width:58%;max-width:58%;min-width:0;
+    color:var(--accent-ink);background:#fffdfae8;padding:10px 28px 10px 11px;border-radius:13px;
+    border:1px solid #fffa;font-weight:bold;font-size:12px;}
+  .app>.layout>main.panel>#grid {display:grid;flex:1 1 0;min-height:0;
+    max-height:none;overflow-y:auto;overflow-x:hidden;align-content:start;
+    padding:3px 5px 24px;overscroll-behavior-y:contain;touch-action:pan-y;
+    -webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:var(--accent-soft) transparent;}
+  .app>.layout>main.panel>#grid.dressing-lounge {grid-template-columns:minmax(0,1fr);}
+  #thMobileMore {flex:1 1 0;min-height:0;overflow-y:auto;overflow-x:hidden;
+    overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;margin:11px 0 0;}
+  #thMobileCollections {flex:1 1 0;min-height:0;overflow-y:auto;overflow-x:hidden;
+    overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;}
+  body.th-mobile-more .app>.layout {display:none;}
+  body.th-mobile-collections .app>.layout>main.panel {display:none;}
+  body.th-mobile-collections .app>.layout>#thMobileCollections {display:block;}
+  body.th-mobile-outfits .app>.layout>main.panel>#thMobileBrowse,
+  body.th-mobile-outfits .app>.layout>main.panel>.controls {display:none;}
+  #thMobileNav {bottom:max(9px,env(safe-area-inset-bottom));}
+  .app>.footer {display:none;}
+}
 `;
 
   const style = document.createElement('style');
@@ -157,6 +200,43 @@
     collectionPanel.setAttribute('aria-label','All closet categories');
     collectionPanel.innerHTML = '<h2>My collections ♡</h2><div class="th-cat-grid"></div>';
     layout.insertBefore(collectionPanel, sidebar);
+    // A compact category picker lives above the existing Polaroid wall.
+    // It dispatches the original category button events, preserving existing filters and saved records.
+    const mainPanel=grid.closest('main.panel');
+    const browse=document.createElement('div');
+    browse.id='thMobileBrowse';
+    browse.innerHTML='<label for="thMobileCategorySelect">Browse collections<small>Pick a category without leaving your wall</small></label><select id="thMobileCategorySelect" aria-label="Browse clothing collections"><option value="All">All pieces</option></select>';
+    mainPanel.insertBefore(browse,grid);
+    const categorySelect=browse.querySelector('#thMobileCategorySelect');
+    const buildBrowseOptions=()=>{
+      if(!isMobile)return;
+      const existing=categorySelect.value;
+      const selected=sidebar.querySelector('.cat.selected')?.dataset.filter||'All';
+      categorySelect.replaceChildren();
+      const all=document.createElement('option');all.value='All';all.textContent='All pieces';categorySelect.appendChild(all);
+      sidebar.querySelectorAll(':scope > .cat[data-filter]').forEach(b=>{
+        const name=b.dataset.filter;
+        if(name==='All'||name==='Outfits')return;
+        const option=document.createElement('option');option.value=name;option.textContent=name;
+        categorySelect.appendChild(option);
+        const sub=b.nextElementSibling;
+        if(sub?.classList?.contains('subcats')){
+          sub.querySelectorAll('.cat.child[data-filter]').forEach(child=>{
+            const childOption=document.createElement('option');childOption.value=child.dataset.filter;
+            childOption.textContent='  '+name+' · '+child.dataset.filter;
+            categorySelect.appendChild(childOption);
+          });
+        }
+      });
+      categorySelect.value=selected;
+      if(categorySelect.selectedIndex<0)categorySelect.value=existing;
+      if(categorySelect.selectedIndex<0)categorySelect.value='All';
+    };
+    categorySelect.addEventListener('change',()=>{
+      const name=categorySelect.value;
+      const b=Array.from(sidebar.querySelectorAll('.cat[data-filter]')).find(x=>x.dataset.filter===name);
+      if(b){b.click();grid.scrollTop=0;setPage('closet');}
+    });
     const nav = document.createElement('nav');
     nav.id = 'thMobileNav';
     nav.setAttribute('aria-label','Closet navigation');
@@ -182,6 +262,7 @@
     const setPage = (view) => {
       document.body.classList.toggle('th-mobile-more',view==='more');
       document.body.classList.toggle('th-mobile-collections',view==='collections');
+      document.body.classList.toggle('th-mobile-outfits',view==='outfits');
       markNav(view);
       if(view==='collections') buildCollectionMenu();
     };
@@ -199,7 +280,7 @@
           const currentButton=Array.from(sidebar.querySelectorAll(':scope > .cat')).find(x=>x.dataset.filter===b.dataset.filter);
           if(currentButton) currentButton.click();
           setPage('closet');
-          sidebar.scrollIntoView({behavior:'smooth',block:'nearest'});
+          grid.scrollTop=0;
         };
         holder.appendChild(target);
       });
@@ -241,11 +322,8 @@
     cardsObserver.observe(grid,{childList:true,subtree:true});
 
     // The original render() rebuilds #categories. Preserve the horizontal scroll location.
-    let categoriesScroll=0;
-    sidebar.addEventListener('click',()=>{if(isMobile)categoriesScroll=sidebar.scrollLeft;},true);
-    sidebar.addEventListener('touchstart',()=>{if(isMobile)categoriesScroll=sidebar.scrollLeft;},{passive:true,capture:true});
     const catObserver=new MutationObserver(()=>{
-      if(isMobile && categoriesScroll>0) sidebar.scrollLeft=categoriesScroll;
+      if(isMobile){buildBrowseOptions();grid.scrollTop=0;}
     });
     catObserver.observe(sidebar,{childList:true});
 
@@ -255,7 +333,7 @@
       const view=btn.dataset.thNav;
       if(view==='more'||view==='collections'){
         setPage(view);
-        (view==='more'?more:collectionPanel).scrollIntoView({behavior:'smooth',block:'start'});
+        (view==='more'?more:collectionPanel).scrollTop=0;
         return;
       }
       if(view==='closet'||view==='outfits'){
@@ -263,7 +341,7 @@
         if(selected && selected.dataset.filter==='Outfits')selected.click();
         else if(selected)selected.click();
         setPage(view);
-        sidebar.scrollIntoView({behavior:'smooth',block:'start'});
+        grid.scrollTop=0;
       }
     });
 
@@ -278,10 +356,10 @@
       const wantsMobile=media.matches;
       if(wantsMobile===isMobile)return;
       isMobile=wantsMobile;
-      if(isMobile){ moveToMobile(); compactCards(); }
+      if(isMobile){ moveToMobile(); compactCards(); buildBrowseOptions(); }
       else{
         restoreDesktop();
-        document.body.classList.remove('th-mobile-more','th-mobile-collections');
+        document.body.classList.remove('th-mobile-more','th-mobile-collections','th-mobile-outfits');
         grid.querySelectorAll('details.th-card-actions').forEach(menu=>{
           const actions=menu.querySelector('.item-actions');
           if(actions)menu.replaceWith(actions);
