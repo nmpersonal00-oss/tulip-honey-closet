@@ -248,5 +248,5 @@ function drInitRoom(){const root=$('grid');if(!root)return;root.className='dress
 
 async function init(){await loadLocal();await refresh();const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';script.async=true;script.onload=connectCloud;script.onerror=()=>{setStatus('Browser photo closet is ready','Cloud login unavailable, but local Polaroid photo saving works in this browser.');};document.head.appendChild(script)}init();
 
-</script></body></html>
+</script><script defer src="./tulip-honey-mobile-layout.js"></script></body></html>
 
