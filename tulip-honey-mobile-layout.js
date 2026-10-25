@@ -1,5 +1,5 @@
 /*
- * Tulip & Honey Closet — iPhone layout only, v6 (normal page scrolling + dropdown + four tabs).
+ * Tulip & Honey Closet — iPhone layout only, v7 (fix cloudPanel mismatch; normal scrolling; four tabs).
  * Original wardrobe records, storage, Supabase authentication and cloud code remain untouched.
  * Desktop layout remains unchanged. No external resources or analytics are loaded.
  * Reversible: remove this file's <script> tag from index.html.
@@ -29,7 +29,7 @@
   .app>.hero h1 { font-size:clamp(21px,5.6vw,25px); margin:0 0 5px; }
   .app>.hero p { font-size:11px; line-height:1.45; }
   .app>.hero .art { flex:0 0 65px; width:65px; height:70px; }
-  #cloudPane { margin:0; }
+  #cloudPanel { margin:0; }
   .app>.layout { display:flex; flex-direction:column; gap:11px; min-width:0; margin-top:10px; }
   .app>.layout>.panel.side { order:0; display:flex; flex-flow:row nowrap; align-items:center;
     gap:7px; width:100%; min-width:0; max-height:none; overflow-x:auto; overflow-y:hidden;
@@ -85,9 +85,9 @@
   body.th-mobile-more #thMobileMore { display:block; }
   #thMobileMore h2,#thMobileCollections h2 { font:normal 24px Georgia,serif;
     color:var(--accent-ink); margin:0 0 12px; }
-  #thMobileMore #cloudPane { padding:15px 12px; margin-bottom:12px; border-radius:20px; }
-  #thMobileMore #cloudPane .mainhead { gap:10px; }
-  #thMobileMore #cloudPane .mainhead #configure { padding:8px 10px; font-size:11px; }
+  #thMobileMore #cloudPanel { padding:15px 12px; margin-bottom:12px; border-radius:20px; }
+  #thMobileMore #cloudPanel .mainhead { gap:10px; }
+  #thMobileMore #cloudPanel .mainhead #configure { padding:8px 10px; font-size:11px; }
   #thMobileMore #authArea .controls { display:flex; flex-wrap:wrap; }
   #thMobileMore #authArea .controls input { width:100%; min-width:0; }
   #thMobileMore .th-mobile-tools { display:flex; flex-wrap:wrap; align-items:center; gap:9px;
@@ -162,27 +162,29 @@
 }
 `;
 
-  const style = document.createElement('style');
-  style.id = 'tulip-honey-mobile-styles';
-  style.textContent = css;
-  document.head.appendChild(style);
-
   function start() {
     const app = document.querySelector('.app');
     const header = app?.querySelector('header');
     const layout = app?.querySelector('.layout');
     const sidebar = document.getElementById('categories');
     const grid = document.getElementById('grid');
-    const cloudPane = document.getElementById('cloudPane');
+    const cloudPanel = document.getElementById('cloudPanel');
     const search = document.getElementById('search');
     const sort = document.getElementById('sort');
     const backup = document.getElementById('backup');
     const restore = document.getElementById('restore');
     const sound = document.querySelector('.app>header .sound');
-    if (!app || !header || !layout || !sidebar || !grid || !cloudPane || !search || !sort || !backup || !restore || !sound) return;
+    if (!app || !header || !layout || !sidebar || !grid || !cloudPanel || !search || !sort || !backup || !restore || !sound) return;
+
+    // Safety: do not apply layout CSS unless every required element exists.
+    // This preserves the original closet if app markup ever changes.
+    const style = document.createElement('style');
+    style.id = 'tulip-honey-mobile-styles';
+    style.textContent = css;
+    document.head.appendChild(style);
 
     const original = {
-      cloudParent:cloudPane.parentNode, cloudNext:cloudPane.nextSibling,
+      cloudParent:cloudPanel.parentNode, cloudNext:cloudPanel.nextSibling,
       sortParent:sort.parentNode, sortNext:sort.nextSibling,
       backupParent:backup.parentNode, backupNext:backup.nextSibling,
       restoreParent:restore.parentNode, restoreNext:restore.nextSibling,
@@ -286,7 +288,7 @@
     }
     const originalControls = {sort,backup,restore};
     const moveToMobile = () => {
-      more.querySelector('#thMobileCloud').appendChild(cloudPane);
+      more.querySelector('#thMobileCloud').appendChild(cloudPanel);
       const controls=more.querySelector('.th-mobile-tools');
       controls.append(originalControls.sort,originalControls.backup,originalControls.restore);
       more.querySelector('.th-mobile-sound').appendChild(sound);
@@ -297,7 +299,7 @@
       after(original.restoreParent,restore,original.restoreNext);
       after(original.backupParent,backup,original.backupNext);
       after(original.sortParent,sort,original.sortNext);
-      after(original.cloudParent,cloudPane,original.cloudNext);
+      after(original.cloudParent,cloudPanel,original.cloudNext);
     };
     const compactCards = () => {
       if (!isMobile) return;
