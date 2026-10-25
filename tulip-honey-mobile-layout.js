@@ -1,5 +1,5 @@
 /*
- * Tulip & Honey Closet — iPhone layout only, v5 (dropdown + independent scrolling).
+ * Tulip & Honey Closet — iPhone layout only, v6 (normal page scrolling + dropdown + four tabs).
  * Original wardrobe records, storage, Supabase authentication and cloud code remain untouched.
  * Desktop layout remains unchanged. No external resources or analytics are loaded.
  * Reversible: remove this file's <script> tag from index.html.
@@ -118,47 +118,46 @@
     stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
   .app>.footer { margin-bottom:8px; }
 }
-/* V5: Keep iPhone page stationary, let the Polaroid wall and secondary tabs scroll independently. */
+/* V6: Keep the page itself scrollable. The wardrobe wall can scroll locally,
+   but no viewport/body scroll lock is applied. */
 #thMobileBrowse {display:none;}
 @media ${MOBILE_QUERY} {
-  html, body {height:100%;min-height:0;overflow:hidden;overscroll-behavior:none;}
-  .app {display:flex;flex-direction:column;height:100dvh;min-height:0;max-height:100dvh;
-    overflow:hidden;padding:12px 12px calc(92px + env(safe-area-inset-bottom));}
-  .app>header {flex:0 0 auto;min-height:0;}
+  html {height:auto!important;min-height:100%;overflow-y:auto!important;scroll-behavior:auto;}
+  body {height:auto!important;min-height:100dvh;overflow-y:auto!important;overflow-x:hidden;}
+  .app {height:auto!important;min-height:100dvh;max-height:none!important;
+    overflow:visible!important;padding:12px 12px calc(110px + env(safe-area-inset-bottom));}
+  .app>header {height:auto;overflow:visible;}
   .app>.hero {display:none!important;}
-  .app>.layout {flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:0;
-    overflow:hidden;margin-top:12px;}
+  .app>.layout {display:flex;flex-direction:column;gap:12px;min-height:0;
+    height:auto;max-height:none;overflow:visible;margin-top:12px;}
   .app>.layout>.panel.side {display:none!important;}
-  .app>.layout>main.panel {display:flex;flex-direction:column;flex:1 1 0;
-    min-height:0;overflow:hidden;padding:14px 12px 9px;}
-  .app>.layout>main.panel>.mainhead,
-  .app>.layout>main.panel>.controls,
-  .app>.layout>main.panel>#thMobileBrowse {flex:0 0 auto;}
-  .app>.layout>main.panel>.controls {margin:11px 0 10px;}
-  #thMobileBrowse {display:flex;align-items:center;gap:10px;padding:9px 11px;
-    margin:0 0 10px;border-radius:16px;background:linear-gradient(135deg,var(--glow),var(--accent-soft));
-    border:1px solid #fff9;box-shadow:inset 0 1px 0 #fff;}
+  .app>.layout>main.panel {display:flex;flex-direction:column;height:auto;max-height:none;
+    min-height:0;overflow:visible;padding:14px 12px 16px;}
+  .app>.layout>main.panel>.controls {margin:11px 0 10px;flex:0 0 auto;}
+  #thMobileBrowse {display:flex;align-items:center;gap:10px;padding:10px 11px;
+    margin:0 0 12px;border-radius:16px;background:linear-gradient(135deg,var(--glow),var(--accent-soft));
+    border:1px solid #fff9;box-shadow:inset 0 1px 0 #fff;flex:0 0 auto;}
   #thMobileBrowse label {flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:3px;
     color:var(--accent-ink);font-weight:700;font-size:12px;}
   #thMobileBrowse label small {font-weight:400;font-size:10px;opacity:.8;}
-  #thMobileCategorySelect {flex:0 1 58%;width:58%;max-width:58%;min-width:0;
-    color:var(--accent-ink);background:#fffdfae8;padding:10px 28px 10px 11px;border-radius:13px;
+  #thMobileCategorySelect {flex:0 1 57%;width:57%;max-width:57%;min-width:0;
+    color:var(--accent-ink);background:#fffdfae8;padding:11px 28px 11px 11px;border-radius:13px;
     border:1px solid #fffa;font-weight:bold;font-size:12px;}
-  .app>.layout>main.panel>#grid {display:grid;flex:1 1 0;min-height:0;
-    max-height:none;overflow-y:auto;overflow-x:hidden;align-content:start;
-    padding:3px 5px 24px;overscroll-behavior-y:contain;touch-action:pan-y;
+  .app>.layout>main.panel>#grid.grid {display:grid;max-height:min(52dvh,520px);
+    min-height:160px;overflow-y:auto;overflow-x:hidden;align-content:start;
+    padding:3px 5px 24px;overscroll-behavior-y:auto;
     -webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:var(--accent-soft) transparent;}
-  .app>.layout>main.panel>#grid.dressing-lounge {grid-template-columns:minmax(0,1fr);}
-  #thMobileMore {flex:1 1 0;min-height:0;overflow-y:auto;overflow-x:hidden;
-    overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;margin:11px 0 0;}
-  #thMobileCollections {flex:1 1 0;min-height:0;overflow-y:auto;overflow-x:hidden;
-    overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;}
+  .app>.layout>main.panel>#grid.dressing-lounge {display:grid;grid-template-columns:minmax(0,1fr);
+    overflow:visible;max-height:none;min-height:0;}
+  #thMobileMore {margin:11px 0;max-height:none;overflow:visible;}
+  #thMobileCollections {max-height:none;overflow:visible;}
   body.th-mobile-more .app>.layout {display:none;}
   body.th-mobile-collections .app>.layout>main.panel {display:none;}
   body.th-mobile-collections .app>.layout>#thMobileCollections {display:block;}
   body.th-mobile-outfits .app>.layout>main.panel>#thMobileBrowse,
   body.th-mobile-outfits .app>.layout>main.panel>.controls {display:none;}
-  #thMobileNav {bottom:max(9px,env(safe-area-inset-bottom));}
+  #thMobileNav {display:grid!important;position:fixed;bottom:max(9px,env(safe-area-inset-bottom));}
+  body:has(.modal.show) #thMobileNav {display:none!important;}
   .app>.footer {display:none;}
 }
 `;
