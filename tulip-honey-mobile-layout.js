@@ -1,5 +1,5 @@
 /*
- * Tulip & Honey Closet — iPhone layout only, v7 (fix cloudPanel mismatch; normal scrolling; four tabs).
+ * Tulip & Honey Closet — iPhone layout only, v7.1 (V7 layout + category counter; normal scrolling; four tabs).
  * Original wardrobe records, storage, Supabase authentication and cloud code remain untouched.
  * Desktop layout remains unchanged. No external resources or analytics are loaded.
  * Reversible: remove this file's <script> tag from index.html.
@@ -373,4 +373,67 @@
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
   else start();
+})();
+
+
+/*
+ * V7.1 — Visible category counters on iPhone.
+ * Read-only: reuses the existing #count and #heading written by the original
+ * Closet render function. Does not access wardrobe records, credentials or cloud.
+ */
+(() => {
+  'use strict';
+  const style = document.createElement('style');
+  style.id = 'th-category-counter-style';
+  style.textContent = `
+    #thCategoryCountBadge { display:none; }
+    @media (max-width:720px) {
+      .app>.layout>main.panel>.mainhead #count { display:none; }
+      #thCategoryCountBadge {
+        display:inline-flex; align-items:center; justify-content:center;
+        width:max-content; max-width:100%; margin-top:7px;
+        padding:6px 12px; border-radius:999px;
+        font:700 12px/1.3 'Trebuchet MS',system-ui,sans-serif;
+        color:var(--accent-ink,#85546f);
+        background:linear-gradient(155deg,#fff9,var(--accent-soft,#f8d6e7));
+        border:1px solid #fff9; box-shadow:inset 0 1px 0 #fff9,0 3px 9px #97738b17;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+
+  function startCounter() {
+    const heading = document.getElementById('heading');
+    const originalCount = document.getElementById('count');
+    if (!heading || !originalCount || document.getElementById('thCategoryCountBadge')) return;
+    const badge = document.createElement('span');
+    badge.id = 'thCategoryCountBadge';
+    badge.setAttribute('role','status');
+    badge.setAttribute('aria-live','polite');
+    heading.insertAdjacentElement('afterend', badge);
+
+    const update = () => {
+      const match = (originalCount.textContent || '').match(/^\s*(\d+)/);
+      if (!match) { badge.textContent = ''; return; }
+      const n = Number(match[1]);
+      const category = (heading.textContent || 'All treasures').trim();
+      const title = category === 'All treasures' ? (n === 1 ? 'piece' : 'pieces')
+        : category === 'Jewelry' ? (n === 1 ? 'jewelry piece' : 'jewelry pieces')
+        : category === 'Makeup' ? (n === 1 ? 'makeup item' : 'makeup items')
+        : category === 'Hair' ? (n === 1 ? 'hair item' : 'hair items')
+        : category === 'Outfits' ? (n === 1 ? 'outfit' : 'outfits')
+        : (n === 1 && category === 'Dresses') ? 'dress'
+        : (n === 1 && category === 'Shirts') ? 'shirt'
+        : (n === 1 && category === 'Jackets') ? 'jacket'
+        : category.toLowerCase();
+      badge.textContent = n + ' ' + title;
+    };
+    const observer = new MutationObserver(update);
+    observer.observe(heading, {childList:true,characterData:true,subtree:true});
+    observer.observe(originalCount, {childList:true,characterData:true,subtree:true});
+    update();
+  }
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded',startCounter,{once:true});
+  else startCounter();
 })();
