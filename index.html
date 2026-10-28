@@ -1,4 +1,5 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#2d254e"><meta name="apple-mobile-web-app-capable" content="yes"><title>Tulip & Honey Closet</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#2d254e"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><title>Tulip & Honey Closet</title>
 <!-- Build: 2026-10-28 — surgical iPhone interaction fixes; wardrobe data/visuals unchanged -->
 <link rel="icon" href="/tulip-honey-closet/favicon.ico?v=2">
 <link rel="apple-touch-icon" sizes="180x180" href="/tulip-honey-closet/apple-touch-icon.png?v=2">
@@ -593,13 +594,10 @@ body.winter-closet {min-height:100svh;}
 /* Do not disable page scrolling or the mirror's existing piece-dragging. */
 html, body, button, a {touch-action:manipulation;}
 </style>
-
-<style id="ios-status-bar-theme-only">
-/* This paints the system status-bar fallback when iOS reserves its own top strip.
-   It does not reposition the app, its images, the mirror or any controls. */
-html { background-color: #684a5c !important; }
-html:has(body.winter-closet[data-closet="wife"]) { background-color: #684a5c !important; }
-html:has(body.winter-closet[data-closet="husband"]) { background-color: #3d4c68 !important; }
+<style id="statusbar-art-only-fix">
+/* No artificial status bar or root overlay: let the existing winter scene paint the canvas.
+   All existing layout, body wallpaper, mirrors, photos, controls, and storage stay untouched. */
+html { background: transparent !important; }
 </style>
 </head><body data-closet="wife"><div class="app" id="appShell">
  <header class="winter-header">
@@ -980,31 +978,6 @@ async function init(){await loadLocal();await refresh();const script=document.cr
 })();
 </script>
 <script defer src="./tulip-honey-mobile-layout.js"></script>
-<script id="iphone-scene-statusbar">
-(function(){
-  function blendSystemArea(){
-    const body=document.body,root=document.documentElement;
-    if(!body.classList.contains('winter-closet'))return;
-    const scene=getComputedStyle(body);
-    root.style.backgroundImage=scene.backgroundImage;
-    root.style.backgroundPosition='center top, center top';
-    root.style.backgroundSize='cover, cover';
-    root.style.backgroundRepeat='no-repeat';
-    root.style.backgroundAttachment='fixed';
-    // The page can be much taller than the wallpaper. Keep the same scene
-    // on the root canvas even where the body wallpaper ends.
-    root.style.backgroundColor=body.dataset.closet==='husband'?'#24355f':'#713656';
-    const meta=document.querySelector('meta[name="theme-color"]');
-    if(meta)meta.content=body.dataset.closet==='husband'?'#24355f':'#713656';
-  }
-  const originalRender=window.render;
-  // Let the established wardrobe controller call its original rendering function.
-  // This listener observes closet theme switches without modifying navigation.
-  const observer=new MutationObserver(blendSystemArea);
-  observer.observe(document.body,{attributes:true,attributeFilter:['data-closet','class']});
-  blendSystemArea();
-})();
-</script>
 
 <script id="ios-gesture-guard">
 (function(){
