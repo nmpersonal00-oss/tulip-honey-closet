@@ -1,5 +1,5 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#2d254e"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><title>Tulip & Honey Closet</title>
-<!-- Build: 2026-10-28 — native scrolling, zoom and rack-keyboard fixes -->
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#2d254e"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><title>Tulip & Honey Closet</title>
+<!-- Build: 2026-10-28 — surgical iPhone interaction fixes; wardrobe data/visuals unchanged -->
 <link rel="icon" href="/tulip-honey-closet/favicon.ico?v=2">
 <link rel="apple-touch-icon" sizes="180x180" href="/tulip-honey-closet/apple-touch-icon.png?v=2">
 <style>
@@ -577,20 +577,21 @@ body.winter-closet.winter-outfits .rack-sheet .rack-sheet-close:focus-visible {o
 @media(prefers-reduced-motion:reduce){body.winter-closet.winter-outfits .mirror-crown#dressingRackToggle{transition:none}}
 </style>
 
-<style id="mobile-native-app-behavior">
-/* Preserve ordinary scrolling, but stop Safari's white elastic over-scroll.
-   The full winter image is already mirrored onto the root by blendSystemArea(). */
-html,body{overscroll-behavior-y:none;}
-html{background-color:#713656;touch-action:manipulation;-webkit-text-size-adjust:100%;}
-body{touch-action:manipulation;}
-body.winter-closet{background-color:#713656;}
-body.winter-closet[data-closet="husband"]{background-color:#24355f;}
-/* Prevent double-tap magnification without altering mirror-piece dragging. */
-button,a,label,select,input,textarea{touch-action:manipulation;}
-/* iOS Safari can otherwise magnify the viewport when focusing small input text. */
-@media(max-width:720px) and (pointer:coarse){
-  input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),select,textarea{font-size:16px;}
+<style id="ios-gesture-boundary-fix">
+/* iOS Safari: the same winter scene remains behind the whole scrollable document.
+   Safari may reveal root pixels on rubber-band or at the end of tall pages. */
+html, body {margin:0; overscroll-behavior-y:none;}
+html {min-height:100%;background-color:#713656; -webkit-text-size-adjust:100%;}
+body.winter-closet {min-height:100svh;}
+/* Prevent native text-field focus zoom (16px is Safari's threshold).
+   This targets the original more-specific selectors, unlike the previous patch. */
+@media(max-width:720px) {
+  html body.winter-closet input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  html body.winter-closet textarea,
+  html body.winter-closet select {font-size:16px!important;}
 }
+/* Do not disable page scrolling or the mirror's existing piece-dragging. */
+html, body, button, a {touch-action:manipulation;}
 </style>
 </head><body data-closet="wife"><div class="app" id="appShell">
  <header class="winter-header">
@@ -850,16 +851,19 @@ function drOpenRack(){
  toggle.setAttribute('aria-expanded','true');
  document.body.classList.add('rack-sheet-open');
  drPaintRack();
- // Keep the search field unfocused until the person taps it; no automatic iPhone keyboard.
- $('dressingRackClose')?.focus({preventScroll:true});
+ // A rack is not a text-entry action: never trigger iOS's keyboard here.
+ const input=$('dressingSearch');
+ if(input){input.readOnly=true;input.setAttribute('inputmode','none');input.blur();}
+ if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
 }
 function drCloseRack(restoreFocus=true){
  const sheet=$('dressingRackSheet');
  if(sheet){sheet.hidden=true;sheet.setAttribute('aria-hidden','true');}
- // Dismiss any keyboard before hiding the sheet, without affecting the mirror.
+ const input=$('dressingSearch');
+ if(input){input.readOnly=true;input.setAttribute('inputmode','none');}
  if(sheet?.contains(document.activeElement))document.activeElement.blur();
  const toggle=$('dressingRackToggle');
- if(toggle){toggle.setAttribute('aria-expanded','false');if(restoreFocus&&sheet)toggle.focus({preventScroll:true});}
+ if(toggle){toggle.setAttribute('aria-expanded','false');}
  document.body.classList.remove('rack-sheet-open');
 }
 // Modal keyboard handling: Esc closes, Tab stays inside the rack while it is open.
@@ -873,7 +877,16 @@ function drRackKeydown(event){
  if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
  else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
 }
-function drInitRoom(){const root=$('grid');if(!root)return;drCloseRack(false);document.getElementById('dressingRackSheet')?.remove();root.className='dressing-lounge';root.innerHTML=drTemplate();document.body.appendChild($('dressingRackSheet'));$('dressingRackToggle').onclick=drOpenRack;$('dressingRackClose').onclick=()=>drCloseRack();$('dressingRackBackdrop').onclick=()=>drCloseRack();$('dressingCategory').innerHTML='<option value="">All clothing</option>'+Object.keys(taxonomy()).filter(k=>k!=='Outfits').map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join('');$('dressingSearch').oninput=drPaintRack;$('dressingCategory').onchange=drPaintRack;$('dressingSmaller').onclick=()=>{const p=drPieces[drSelected];if(p){p.w=Math.max(15,p.w-5);drDraw()}};$('dressingBigger').onclick=()=>{const p=drPieces[drSelected];if(p){p.w=Math.min(52,p.w+5);drDraw()}};$('dressingFront').onclick=()=>{const p=drPieces[drSelected];if(p){p.z=Math.min(50,Math.max(1,...drPieces.map(x=>x.z||1))+1);drDraw()}};$('dressingRemove').onclick=()=>{if(drSelected>=0){drPieces.splice(drSelected,1);drSelected=-1;drDraw()}};$('dressingClear').onclick=()=>{drReset();drNote('Your mirror is ready for another look. ♡')};$('dressingSave').onclick=drSaveIdea;const mirror=$('dressingMirror');mirror.ondragover=e=>{e.preventDefault();e.dataTransfer.dropEffect='copy'};mirror.ondrop=e=>{e.preventDefault();const id=e.dataTransfer.getData('text/plain');if(id)drAdd(id,{x:e.clientX,y:e.clientY})};drPaintRack();drDraw();drPaintSaved()}
+function drInitRoom(){const root=$('grid');if(!root)return;drCloseRack(false);document.getElementById('dressingRackSheet')?.remove();root.className='dressing-lounge';root.innerHTML=drTemplate();document.body.appendChild($('dressingRackSheet'));$('dressingRackToggle').onclick=drOpenRack;$('dressingRackClose').onclick=()=>drCloseRack();$('dressingRackBackdrop').onclick=()=>drCloseRack();
+ // Keep the search non-editable until it is *actually tapped*.
+ // Prevents a stray Safari focus event from opening the keyboard with the rack.
+ const rackSearch=$('dressingSearch');
+ rackSearch.readOnly=true;rackSearch.setAttribute('inputmode','none');
+ const unlockRackSearch=()=>{rackSearch.readOnly=false;rackSearch.removeAttribute('inputmode')};
+ rackSearch.addEventListener('touchstart',unlockRackSearch,{passive:true});
+ rackSearch.addEventListener('pointerdown',unlockRackSearch);
+ rackSearch.addEventListener('keydown',unlockRackSearch);
+ $('dressingCategory').innerHTML='<option value="">All clothing</option>'+Object.keys(taxonomy()).filter(k=>k!=='Outfits').map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join('');$('dressingSearch').oninput=drPaintRack;$('dressingCategory').onchange=drPaintRack;$('dressingSmaller').onclick=()=>{const p=drPieces[drSelected];if(p){p.w=Math.max(15,p.w-5);drDraw()}};$('dressingBigger').onclick=()=>{const p=drPieces[drSelected];if(p){p.w=Math.min(52,p.w+5);drDraw()}};$('dressingFront').onclick=()=>{const p=drPieces[drSelected];if(p){p.z=Math.min(50,Math.max(1,...drPieces.map(x=>x.z||1))+1);drDraw()}};$('dressingRemove').onclick=()=>{if(drSelected>=0){drPieces.splice(drSelected,1);drSelected=-1;drDraw()}};$('dressingClear').onclick=()=>{drReset();drNote('Your mirror is ready for another look. ♡')};$('dressingSave').onclick=drSaveIdea;const mirror=$('dressingMirror');mirror.ondragover=e=>{e.preventDefault();e.dataTransfer.dropEffect='copy'};mirror.ondrop=e=>{e.preventDefault();const id=e.dataTransfer.getData('text/plain');if(id)drAdd(id,{x:e.clientX,y:e.clientY})};drPaintRack();drDraw();drPaintSaved()}
 document.addEventListener('keydown',drRackKeydown);
 // Only outfit ideas get edited by this module; clothing item CRUD remains unchanged.
 
@@ -966,11 +979,12 @@ async function init(){await loadLocal();await refresh();const script=document.cr
     if(!body.classList.contains('winter-closet'))return;
     const scene=getComputedStyle(body);
     root.style.backgroundImage=scene.backgroundImage;
-    root.style.backgroundPosition=scene.backgroundPosition;
-    root.style.backgroundSize=scene.backgroundSize;
+    root.style.backgroundPosition='center top, center top';
+    root.style.backgroundSize='cover, cover';
     root.style.backgroundRepeat='no-repeat';
     root.style.backgroundAttachment='fixed';
-    // A matching fallback for Safari's rubber-band edge and native safe areas.
+    // The page can be much taller than the wallpaper. Keep the same scene
+    // on the root canvas even where the body wallpaper ends.
     root.style.backgroundColor=body.dataset.closet==='husband'?'#24355f':'#713656';
     const meta=document.querySelector('meta[name="theme-color"]');
     if(meta)meta.content=body.dataset.closet==='husband'?'#24355f':'#713656';
@@ -981,6 +995,47 @@ async function init(){await loadLocal();await refresh();const script=document.cr
   const observer=new MutationObserver(blendSystemArea);
   observer.observe(document.body,{attributes:true,attributeFilter:['data-closet','class']});
   blendSystemArea();
+})();
+</script>
+
+<script id="ios-gesture-guard">
+(function(){
+  'use strict';
+  let down=null,lastTap=null;
+  document.addEventListener('touchstart',function(e){
+    if(e.touches.length!==1){down=null;return;}
+    down={x:e.touches[0].clientX,y:e.touches[0].clientY,t:Date.now()};
+  },{passive:true,capture:true});
+  document.addEventListener('touchend',function(e){
+    if(!down||e.changedTouches.length!==1)return;
+    const pt=e.changedTouches[0],now=Date.now();
+    const dist=Math.hypot(pt.clientX-down.x,pt.clientY-down.y);
+    if(dist>16||now-down.t>450){lastTap=null;down=null;return;}
+    if(lastTap&&now-lastTap.t<345&&Math.hypot(pt.clientX-lastTap.x,pt.clientY-lastTap.y)<32){
+      // iOS otherwise turns a quick double tap into a zoomed, difficult-to-exit page.
+      if(e.cancelable)e.preventDefault();
+      lastTap=null;
+    }else lastTap={x:pt.clientX,y:pt.clientY,t:now};
+    down=null;
+  },{passive:false,capture:true});
+  document.addEventListener('dblclick',function(e){if(e.cancelable)e.preventDefault()},{passive:false,capture:true});
+
+  // iOS Safari below overscroll-behavior support: only cancel a swipe when
+  // the document is *already* at its top/bottom boundary. Otherwise scrolling
+  // and the interactive outfit mirror are left to the browser.
+  let startY=null;
+  document.addEventListener('touchstart',function(e){
+    startY=e.touches.length===1?e.touches[0].clientY:null;
+  },{passive:true});
+  document.addEventListener('touchmove',function(e){
+    if(startY===null||e.touches.length!==1||!e.cancelable)return;
+    if(e.target.closest('.rack-sheet-panel,.winter-sheet,.modal-inner,.dressing-mirror,.dressing-items,input,textarea,select'))return;
+    const delta=e.touches[0].clientY-startY;
+    const root=document.scrollingElement||document.documentElement;
+    const atTop=root.scrollTop<=0&&delta>1;
+    const atBottom=root.scrollTop+root.clientHeight>=root.scrollHeight-2&&delta< -1;
+    if(atTop||atBottom)e.preventDefault();
+  },{passive:false});
 })();
 </script>
 </body></html>
