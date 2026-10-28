@@ -707,13 +707,6 @@ function drSanitizePiece(p){return {item_id:String(p.item_id||''),x:Math.max(0,M
 function drItem(id){return records.find(r=>r.id===id&&r.person===person&&r.category!=='Outfits')}
 function drPhoto(item){return item?photos.get(item.id)||item.photo||'':''}
 function drTemplate(){const isHer=person==='wife';return `<section class="dressing-lounge" aria-label="${isHer?'Wife':'Husband'} dressing room">
- <header class="dressing-banner">
-   <span class="room-badge" aria-hidden="true">✦ &nbsp; ❄ &nbsp; ✦</span>
-   <p class="room-eyebrow">TULIP &amp; HONEY · THE WINTER ATELIER</p>
-   <h3>${isHer?'Her':'His'} enchanted dressing room <span aria-hidden="true">♡</span></h3>
-   <p class="room-description">A little space to dress up your favorite memories. Choose your pieces, style them in the mirror, and keep the looks you love.</p>
-   <div class="room-signature"><span>✧</span> <span>Mirror</span> <span class="room-dot">·</span> <span>Wardrobe</span> <span class="room-dot">·</span> <span>Outfit memories</span> <span>✧</span></div>
- </header>
  <div class="dressing-grid">
   <section class="dressing-stage">
    <div class="room-section-head"><span class="room-number">01</span><div><p class="room-section-kicker">THE ENCHANTED ATELIER</p><h4>The looking glass <span aria-hidden="true">✧</span></h4></div><span class="room-ornament" aria-hidden="true">❄</span></div>
