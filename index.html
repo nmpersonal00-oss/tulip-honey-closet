@@ -1,5 +1,5 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#2d254e"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><title>Tulip & Honey Closet</title>
-<!-- Build: 2026-10-28 — mirror heart opens wardrobe sheet, preserved two closets -->
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#2d254e"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><title>Tulip & Honey Closet</title>
+<!-- Build: 2026-10-28 — native scrolling, zoom and rack-keyboard fixes -->
 <link rel="icon" href="/tulip-honey-closet/favicon.ico?v=2">
 <link rel="apple-touch-icon" sizes="180x180" href="/tulip-honey-closet/apple-touch-icon.png?v=2">
 <style>
@@ -576,6 +576,22 @@ body.winter-closet.winter-outfits .rack-sheet .rack-sheet-close:focus-visible {o
 @media(max-width:380px){body.winter-closet.winter-outfits .rack-sheet .rack-sheet-panel{padding:19px 13px 24px}}
 @media(prefers-reduced-motion:reduce){body.winter-closet.winter-outfits .mirror-crown#dressingRackToggle{transition:none}}
 </style>
+
+<style id="mobile-native-app-behavior">
+/* Preserve ordinary scrolling, but stop Safari's white elastic over-scroll.
+   The full winter image is already mirrored onto the root by blendSystemArea(). */
+html,body{overscroll-behavior-y:none;}
+html{background-color:#713656;touch-action:manipulation;-webkit-text-size-adjust:100%;}
+body{touch-action:manipulation;}
+body.winter-closet{background-color:#713656;}
+body.winter-closet[data-closet="husband"]{background-color:#24355f;}
+/* Prevent double-tap magnification without altering mirror-piece dragging. */
+button,a,label,select,input,textarea{touch-action:manipulation;}
+/* iOS Safari can otherwise magnify the viewport when focusing small input text. */
+@media(max-width:720px) and (pointer:coarse){
+  input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),select,textarea{font-size:16px;}
+}
+</style>
 </head><body data-closet="wife"><div class="app" id="appShell">
  <header class="winter-header">
    <div class="brand-block"><div class="brand">Tulip &amp; Honey ♡</div><div class="sub">our little dreamy wardrobe</div></div>
@@ -834,11 +850,14 @@ function drOpenRack(){
  toggle.setAttribute('aria-expanded','true');
  document.body.classList.add('rack-sheet-open');
  drPaintRack();
- $('dressingSearch')?.focus({preventScroll:true});
+ // Keep the search field unfocused until the person taps it; no automatic iPhone keyboard.
+ $('dressingRackClose')?.focus({preventScroll:true});
 }
 function drCloseRack(restoreFocus=true){
  const sheet=$('dressingRackSheet');
  if(sheet){sheet.hidden=true;sheet.setAttribute('aria-hidden','true');}
+ // Dismiss any keyboard before hiding the sheet, without affecting the mirror.
+ if(sheet?.contains(document.activeElement))document.activeElement.blur();
  const toggle=$('dressingRackToggle');
  if(toggle){toggle.setAttribute('aria-expanded','false');if(restoreFocus&&sheet)toggle.focus({preventScroll:true});}
  document.body.classList.remove('rack-sheet-open');
@@ -951,6 +970,8 @@ async function init(){await loadLocal();await refresh();const script=document.cr
     root.style.backgroundSize=scene.backgroundSize;
     root.style.backgroundRepeat='no-repeat';
     root.style.backgroundAttachment='fixed';
+    // A matching fallback for Safari's rubber-band edge and native safe areas.
+    root.style.backgroundColor=body.dataset.closet==='husband'?'#24355f':'#713656';
     const meta=document.querySelector('meta[name="theme-color"]');
     if(meta)meta.content=body.dataset.closet==='husband'?'#24355f':'#713656';
   }
