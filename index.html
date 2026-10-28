@@ -1,5 +1,5 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#2d254e"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><title>Tulip & Honey Closet</title>
-<!-- Build: 2026-10-28 — outfit intro permanently removed; iOS edge-to-edge fixed -->
+<!-- Build: 2026-10-28 — mirror heart opens wardrobe sheet, preserved two closets -->
 <link rel="icon" href="/tulip-honey-closet/favicon.ico?v=2">
 <link rel="apple-touch-icon" sizes="180x180" href="/tulip-honey-closet/apple-touch-icon.png?v=2">
 <style>
@@ -528,6 +528,54 @@ body.winter-closet { min-height:100svh; }
   }
 }
 </style>
+
+<style id="rack-heart-picker-v1">
+/* Scoped dressing-room-only overlay. Uses existing pink/blue --room-* theme tokens. */
+body.winter-closet.winter-outfits .mirror-crown#dressingRackToggle {
+ cursor:pointer;pointer-events:auto;touch-action:manipulation;font-family:Georgia,serif;
+ transition:transform .18s ease,box-shadow .18s ease;
+}
+body.winter-closet.winter-outfits .mirror-crown#dressingRackToggle:hover,
+body.winter-closet.winter-outfits .mirror-crown#dressingRackToggle:focus-visible {
+ transform:translateX(-50%) translateY(-2px);box-shadow:0 5px 18px var(--room-shadow),0 0 0 3px rgba(255,255,255,.8);
+}
+body.winter-closet.winter-outfits .mirror-crown#dressingRackToggle:focus-visible {outline:2px solid var(--room-accent);outline-offset:2px;}
+body.rack-sheet-open {overflow:hidden!important;}
+body .rack-sheet[hidden] {display:none!important;}
+body .rack-sheet {
+ position:fixed;inset:0;z-index:99999;display:flex;align-items:flex-end;justify-content:center;
+ padding:12px 12px max(12px,env(safe-area-inset-bottom));isolation:isolate;
+}
+body .rack-sheet-backdrop {
+ position:absolute;inset:0;border:0;border-radius:0;background:rgba(31,22,45,.53);
+ backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);width:100%;height:100%;padding:0;
+}
+body.winter-closet.winter-outfits .rack-sheet .rack-sheet-panel {
+ position:relative;z-index:1;width:min(560px,100%);max-height:min(82dvh,760px);
+ min-height:250px;overflow-y:auto;overscroll-behavior:contain;
+ border-radius:30px 30px 23px 23px;
+ padding:22px 19px max(22px,env(safe-area-inset-bottom));
+ background:linear-gradient(170deg,rgba(255,255,255,.97),var(--room-soft) 60%,rgba(255,255,255,.96));
+ box-shadow:0 20px 65px rgba(20,16,44,.40),inset 0 2px 1px #fff;
+ border:2px solid rgba(255,255,255,.94);
+}
+body.winter-closet.winter-outfits .rack-sheet .rack-sheet-panel::before {pointer-events:none;}
+body.winter-closet.winter-outfits .rack-sheet .rack-sheet-close {
+ margin-left:auto;flex:none;width:38px;height:38px;border-radius:50%;padding:0;
+ display:grid;place-items:center;font:normal 27px Georgia,serif;
+ background:linear-gradient(#fff,var(--room-soft));color:var(--room-ink);
+ box-shadow:0 2px 8px var(--room-shadow);border:1px solid white;
+}
+body.winter-closet.winter-outfits .rack-sheet .dressing-items {max-height:none;overflow:visible;grid-template-columns:repeat(3,minmax(0,1fr));}
+body.winter-closet.winter-outfits .rack-sheet .dressing-item:focus-visible,
+body.winter-closet.winter-outfits .rack-sheet .rack-sheet-close:focus-visible {outline:2px solid var(--room-accent);outline-offset:2px;}
+@media(min-width:760px){
+ body .rack-sheet{align-items:center;padding:24px;}
+ body.winter-closet.winter-outfits .rack-sheet .rack-sheet-panel{border-radius:32px;max-height:min(84vh,800px);}
+}
+@media(max-width:380px){body.winter-closet.winter-outfits .rack-sheet .rack-sheet-panel{padding:19px 13px 24px}}
+@media(prefers-reduced-motion:reduce){body.winter-closet.winter-outfits .mirror-crown#dressingRackToggle{transition:none}}
+</style>
 </head><body data-closet="wife"><div class="app" id="appShell">
  <header class="winter-header">
    <div class="brand-block"><div class="brand">Tulip &amp; Honey ♡</div><div class="sub">our little dreamy wardrobe</div></div>
@@ -665,7 +713,7 @@ async function refresh(){
  setStatus('Syncing your closet…');const {data,error}=await client.from('closet_items').select('*').order('created_at',{ascending:false});if(error){setStatus('Cloud sync failed',error.message);return}
  records=data.map(r=>({id:r.id,person:r.person,name:r.name,category:r.category,subcategory:r.subcategory||'',details:r.details||'',photo_path:r.photo_path,created:Date.parse(r.created_at)}));photos.clear();await Promise.all(records.filter(r=>r.photo_path).map(async r=>{const {data,error}=await client.storage.from('closet-photos').createSignedUrl(r.photo_path,3600);if(!error)photos.set(r.id,data.signedUrl)}));authUI();render();await drRefreshIdeas()
 }
-function render(){document.body.dataset.closet=person;const t=taxonomy();$('wife').classList.toggle('active',person==='wife');$('husband').classList.toggle('active',person==='husband');$('greeting').textContent=person==='wife'?'A closet full of little joys':'A cozy closet just for him';$('categories').innerHTML='<h3>Little collections</h3><button class="cat '+(filter==='All'?'selected':'')+'" data-filter="All">♡ All treasures</button>'+Object.entries(t).map(([g,subs])=>`<button class="cat ${filter===g?'selected':''}" data-filter="${esc(g)}">${esc(g)}${subs.length?' <span class="arrow">⌄</span>':''}</button>${subs.length?`<div class="subcats ${expanded.has(g)?'expanded':''}">${subs.map(s=>`<button class="cat child ${filter===s?'selected':''}" data-filter="${esc(s)}">${esc(s)}</button>`).join('')}</div>`:''}`).join('');document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{const next=b.dataset.filter,subs=t[next];if(subs?.length){if(expanded.has(next)){expanded.delete(next);if(filter===next||subs.includes(filter))filter='All'}else{expanded.add(next);filter=next}}else{filter=next;const parent=Object.keys(t).find(g=>t[g].includes(next));if(parent)expanded.add(parent)}render()});let visible=records.filter(r=>r.person===person&&(filter==='All'||r.category===filter||r.subcategory===filter)&&`${r.name} ${r.details} ${r.subcategory}`.toLowerCase().includes($('search').value.toLowerCase()));visible.sort((a,b)=>$('sort').value==='name'?a.name.localeCompare(b.name):$('sort').value==='old'?a.created-b.created:b.created-a.created);$('heading').textContent=filter==='All'?'All treasures':filter;$('count').textContent=filter==='Outfits'?`${drCurrentIdeas().length} saved outfit ideas ♡`:`${visible.length} ${visible.length===1?'piece':'pieces'}`;if(filter==='Outfits'){$('add').textContent='＋ Add outfit photo';drInitRoom();return}$('add').textContent='＋ Add a photo';$('grid').className='grid';$('grid').innerHTML=visible.length?visible.map((r,i)=>`<article class="item"><div class="polaroid" style="--tilt:${[-1.8,1.1,-.5,1.7][i%4]}deg"><div class="polaroid-photo">${photos.has(r.id)?`<img src="${esc(photos.get(r.id))}" alt="${esc(r.name)}" loading="lazy">`:'<span class="placeholder">♡</span>'}</div><div class="polaroid-caption"><span class="handwriting">${esc(r.details||r.name)}</span><span class="polaroid-name">${r.details?esc(r.name):'♡ '+esc(r.category)}</span></div></div><div class="card-tag">${esc(r.subcategory||r.category)}</div><div class="item-actions"><button class="tiny" data-edit="${r.id}">Edit photo</button><button class="tiny" data-delete="${r.id}">Remove</button></div></article>`).join(''):`<div class="empty" style="grid-column:1/-1"><h3>Your Polaroid wall is waiting</h3><p>Add a picture of your clothing, write a little caption, and watch this category fill with memories.</p><p class="note">${isLocal()?'Browser mode: photos save locally where supported.':'Cloud mode: new photos sync to your private account.'}</p><button id="emptyAdd">＋ Upload my first photo</button></div>`;document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openModal(b.dataset.edit));document.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>removeItem(b.dataset.delete));if($('emptyAdd'))$('emptyAdd').onclick=()=>openModal()}
+function render(){drCloseRack(false);if(filter!=='Outfits')document.getElementById('dressingRackSheet')?.remove();document.body.dataset.closet=person;const t=taxonomy();$('wife').classList.toggle('active',person==='wife');$('husband').classList.toggle('active',person==='husband');$('greeting').textContent=person==='wife'?'A closet full of little joys':'A cozy closet just for him';$('categories').innerHTML='<h3>Little collections</h3><button class="cat '+(filter==='All'?'selected':'')+'" data-filter="All">♡ All treasures</button>'+Object.entries(t).map(([g,subs])=>`<button class="cat ${filter===g?'selected':''}" data-filter="${esc(g)}">${esc(g)}${subs.length?' <span class="arrow">⌄</span>':''}</button>${subs.length?`<div class="subcats ${expanded.has(g)?'expanded':''}">${subs.map(s=>`<button class="cat child ${filter===s?'selected':''}" data-filter="${esc(s)}">${esc(s)}</button>`).join('')}</div>`:''}`).join('');document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{const next=b.dataset.filter,subs=t[next];if(subs?.length){if(expanded.has(next)){expanded.delete(next);if(filter===next||subs.includes(filter))filter='All'}else{expanded.add(next);filter=next}}else{filter=next;const parent=Object.keys(t).find(g=>t[g].includes(next));if(parent)expanded.add(parent)}render()});let visible=records.filter(r=>r.person===person&&(filter==='All'||r.category===filter||r.subcategory===filter)&&`${r.name} ${r.details} ${r.subcategory}`.toLowerCase().includes($('search').value.toLowerCase()));visible.sort((a,b)=>$('sort').value==='name'?a.name.localeCompare(b.name):$('sort').value==='old'?a.created-b.created:b.created-a.created);$('heading').textContent=filter==='All'?'All treasures':filter;$('count').textContent=filter==='Outfits'?`${drCurrentIdeas().length} saved outfit ideas ♡`:`${visible.length} ${visible.length===1?'piece':'pieces'}`;if(filter==='Outfits'){$('add').textContent='＋ Add outfit photo';drInitRoom();return}$('add').textContent='＋ Add a photo';$('grid').className='grid';$('grid').innerHTML=visible.length?visible.map((r,i)=>`<article class="item"><div class="polaroid" style="--tilt:${[-1.8,1.1,-.5,1.7][i%4]}deg"><div class="polaroid-photo">${photos.has(r.id)?`<img src="${esc(photos.get(r.id))}" alt="${esc(r.name)}" loading="lazy">`:'<span class="placeholder">♡</span>'}</div><div class="polaroid-caption"><span class="handwriting">${esc(r.details||r.name)}</span><span class="polaroid-name">${r.details?esc(r.name):'♡ '+esc(r.category)}</span></div></div><div class="card-tag">${esc(r.subcategory||r.category)}</div><div class="item-actions"><button class="tiny" data-edit="${r.id}">Edit photo</button><button class="tiny" data-delete="${r.id}">Remove</button></div></article>`).join(''):`<div class="empty" style="grid-column:1/-1"><h3>Your Polaroid wall is waiting</h3><p>Add a picture of your clothing, write a little caption, and watch this category fill with memories.</p><p class="note">${isLocal()?'Browser mode: photos save locally where supported.':'Cloud mode: new photos sync to your private account.'}</p><button id="emptyAdd">＋ Upload my first photo</button></div>`;document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openModal(b.dataset.edit));document.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>removeItem(b.dataset.delete));if($('emptyAdd'))$('emptyAdd').onclick=()=>openModal()}
 function suboptions(){const subs=taxonomy()[$('category').value]||[];$('subcategory').innerHTML=subs.length?subs.map(s=>`<option>${esc(s)}</option>`).join(''):'<option value="">No subcategory</option>';$('subcategory').closest('.field').style.display=subs.length?'grid':'none'}
 let previewObjectURL=null;
 function updatePreview(){const name=$('name').value.trim(),caption=$('details').value.trim();$('captionPreview').textContent=caption||name||'your little caption ♡';$('namePreview').textContent=caption?(name||'your treasure'):'♡ from my closet'}
@@ -702,6 +750,7 @@ $('restore').onclick=()=>$('restoreFile').click();$('restoreFile').onchange=asyn
 $('backup').onclick=backup;$('form').onsubmit=saveItem;$('category').onchange=suboptions;$('add').onclick=()=>openModal();$('close').onclick=$('cancel').onclick=closeModal;// Preserve the current main tab when switching wardrobes: Outfits stays Outfits.
 function switchWardrobe(nextPerson){
   if(person===nextPerson)return;
+  drCloseRack(false);
   const stayInDressingRoom=filter==='Outfits';
   person=nextPerson;
   filter=stayInDressingRoom?'Outfits':'All';
@@ -731,11 +780,11 @@ function drTemplate(){const isHer=person==='wife';return `<section class="dressi
   <section class="dressing-stage">
    <div class="room-section-head"><span class="room-number">01</span><div><p class="room-section-kicker">THE ENCHANTED ATELIER</p><h4>The looking glass <span aria-hidden="true">✧</span></h4></div><span class="room-ornament" aria-hidden="true">❄</span></div>
    <p class="dressing-overline">Arrange the pieces you love inside your mirror</p>
-   <div class="mirror-surround"><div class="mirror-crown" aria-hidden="true"><span>✧</span> ♡ <span>✧</span></div>
+   <div class="mirror-surround"><button id="dressingRackToggle" class="mirror-crown" type="button" aria-label="Open our clothing rack" aria-haspopup="dialog" aria-expanded="false" aria-controls="dressingRackSheet" title="Open our clothing rack"><span aria-hidden="true">✧</span> ♡ <span aria-hidden="true">✧</span></button>
      <div id="dressingMirror" class="dressing-mirror" aria-label="Outfit design mirror. Touch and drag pieces to move them.">
       <span class="dressing-curtain left" aria-hidden="true"></span><span class="dressing-curtain right" aria-hidden="true"></span>
       <div class="dressing-top-garland" aria-hidden="true"></div>
-      <div id="dressingPlaceholder" class="dressing-placeholder"><span aria-hidden="true">✧ ♡ ✧</span><strong>Your own little fashion show</strong><small>Choose something from the wardrobe below to begin</small></div>
+      <div id="dressingPlaceholder" class="dressing-placeholder"><span aria-hidden="true">✧ ♡ ✧</span><strong>Your own little fashion show</strong><small>Tap the heart above the mirror to open our clothing rack</small></div>
       <div class="dressing-mirror-floor" aria-hidden="true"></div>
      </div>
     </div>
@@ -745,15 +794,18 @@ function drTemplate(){const isHer=person==='wife';return `<section class="dressi
    <div class="dressing-fields"><input id="dressingTitle" maxlength="100" placeholder="Name your outfit ♡" aria-label="Outfit name"><textarea id="dressingNotes" maxlength="600" placeholder="A sweet note, occasion, or what we love about it..." aria-label="Outfit notes"></textarea></div>
    <button class="dressing-save" id="dressingSave" type="button">♡ &nbsp; Save our outfit idea</button><div class="dressing-error" id="dressingError" role="status"></div>
   </section>
-  <section class="dressing-shelf">
-   <div class="room-section-head"><span class="room-number">02</span><div><p class="room-section-kicker">THE LITTLE WARDROBE</p><h4>Our clothing rack <span aria-hidden="true">♡</span></h4></div><span class="room-ornament" aria-hidden="true">✦</span></div>
+  <div id="dressingRackSheet" class="rack-sheet" role="dialog" aria-modal="true" aria-label="Our clothing rack" aria-hidden="true" hidden>
+   <button type="button" class="rack-sheet-backdrop" id="dressingRackBackdrop" aria-label="Close clothing rack"></button>
+   <section class="dressing-shelf rack-sheet-panel">
+   <div class="room-section-head"><span class="room-number">02</span><div><p class="room-section-kicker">THE LITTLE WARDROBE</p><h4>Our clothing rack <span aria-hidden="true">♡</span></h4></div><button type="button" class="rack-sheet-close" id="dressingRackClose" aria-label="Close clothing rack">×</button></div>
    <div class="dressing-shelf-head"><p>Tap your favorite Polaroids to add them to the mirror. Your original photos always stay in your Closet.</p></div>
    <div class="rack-search-wrap"><span aria-hidden="true">⌕</span><input type="search" id="dressingSearch" placeholder="Find your lovely pieces..." aria-label="Find clothing"></div>
    <select id="dressingCategory" aria-label="Choose clothing category"><option value="">All clothing</option></select>
    <div class="room-rack-label">CHOOSE A TREASURE <span aria-hidden="true">❄</span></div>
    <div id="dressingItems" class="dressing-items"></div>
    <p class="dressing-tip">♡ Add clothing photos on the Closet tab first. Then come back to mix and match here.</p>
-  </section>
+   </section>
+  </div>
  </div>
  <section class="dressing-saved"><div class="room-section-head"><span class="room-number">03</span><div><p class="room-section-kicker">OUR LITTLE KEEPSAKES</p><h4>Saved outfit memories <span aria-hidden="true">♡</span></h4></div><span class="room-ornament" aria-hidden="true">✧</span></div>
   <p class="saved-intro">Each look has a story. Your favorites are tucked away here.</p>
@@ -768,13 +820,42 @@ function drDrawSelectedOnly(){document.querySelectorAll('.mirror-piece').forEach
 function drMovePointer(e){if(!drDrag||e.pointerId!==drDrag.id)return;let p=drPieces[drDrag.i];if(!p)return;p.x=Math.max(0,Math.min(86,drDrag.x+100*(e.clientX-drDrag.startX)/Math.max(1,drDrag.w)));p.y=Math.max(0,Math.min(84,drDrag.y+100*(e.clientY-drDrag.startY)/Math.max(1,drDrag.h)));drDrag.node.style.left=p.x+'%';drDrag.node.style.top=p.y+'%'}
 function drEndPointer(e){if(!drDrag)return;try{e.currentTarget.releasePointerCapture?.(drDrag.id)}catch{}e.currentTarget.removeEventListener('pointermove',drMovePointer);drDrag=null;drDraw()}
 function drAdd(itemId,point=null){if(!drItem(itemId)){drNote('That item is not available in this closet.');return}if(drPieces.length>=20){drNote('A mirror can hold up to 20 pieces.');return}const n=drPieces.length;const p={item_id:itemId,x:Math.min(60,27+(n%4)*10),y:Math.min(63,8+Math.floor(n/4)*13),w:32,z:n+1};if(point){const rect=$('dressingMirror').getBoundingClientRect();p.x=Math.max(0,Math.min(83,100*(point.x-rect.left)/rect.width-14));p.y=Math.max(0,Math.min(83,100*(point.y-rect.top)/rect.height-12))}drPieces.push(p);drSelected=drPieces.length-1;drNote('');drDraw()}
-function drPaintRack(){const root=$('dressingItems');if(!root)return;const q=$('dressingSearch').value.toLowerCase(),cat=$('dressingCategory').value;const candidates=records.filter(r=>r.person===person&&r.category!=='Outfits'&&(!cat||r.category===cat)&&(`${r.name} ${r.details} ${r.subcategory}`.toLowerCase().includes(q)));root.innerHTML=candidates.length?candidates.map(r=>`<button class="dressing-item" type="button" draggable="true" data-rack-id="${esc(r.id)}">${drPhoto(r)?`<img src="${esc(drPhoto(r))}" alt="">`:`<span class="dressing-item-emoji">${drPersonEmoji(r)}</span>`}<strong>${esc(r.name)}</strong><small>${esc(r.subcategory||r.category)}</small></button>`).join(''):`<p class="dressing-empty">No clothing photos yet in this section. Add your shirt, shoes, and accessories as Polaroids first, then come back to your mirror. ♡</p>`;root.querySelectorAll('[data-rack-id]').forEach(el=>{el.onclick=()=>drAdd(el.dataset.rackId);el.ondragstart=e=>{e.dataTransfer.setData('text/plain',el.dataset.rackId);e.dataTransfer.effectAllowed='copy'}})}
+function drPaintRack(){const root=$('dressingItems');if(!root)return;const q=$('dressingSearch').value.toLowerCase(),cat=$('dressingCategory').value;const candidates=records.filter(r=>r.person===person&&r.category!=='Outfits'&&(!cat||r.category===cat)&&(`${r.name} ${r.details} ${r.subcategory}`.toLowerCase().includes(q)));root.innerHTML=candidates.length?candidates.map(r=>`<button class="dressing-item" type="button" draggable="true" data-rack-id="${esc(r.id)}">${drPhoto(r)?`<img src="${esc(drPhoto(r))}" alt="">`:`<span class="dressing-item-emoji">${drPersonEmoji(r)}</span>`}<strong>${esc(r.name)}</strong><small>${esc(r.subcategory||r.category)}</small></button>`).join(''):`<p class="dressing-empty">No clothing photos yet in this section. Add your shirt, shoes, and accessories as Polaroids first, then come back to your mirror. ♡</p>`;root.querySelectorAll('[data-rack-id]').forEach(el=>{el.onclick=()=>{drAdd(el.dataset.rackId);drCloseRack();};el.ondragstart=e=>{e.dataTransfer.setData('text/plain',el.dataset.rackId);e.dataTransfer.effectAllowed='copy'}})}
 function drPaintSaved(){const root=$('dressingSaved');if(!root)return;const list=drCurrentIdeas();root.innerHTML=list.length?list.map(idea=>{const p=(idea.pieces||[]).slice(0,8),body=p.map((v,i)=>{const item=drItem(v.item_id),photo=drPhoto(item);const style=`left:${Math.min(80,v.x||0)}%;top:${Math.min(73,v.y||0)}%;width:${Math.min(40,v.w||30)}%;height:48%;z-index:${v.z||i+1}`;return photo?`<img alt="" src="${esc(photo)}" style="${style}">`:`<span style="${style}">${drPersonEmoji(item)}</span>`}).join('');return `<article class="outfit-memory"><div class="outfit-memory-visual">${body}</div><h5>${esc(idea.title)}</h5><p>${esc(idea.notes||((idea.pieces||[]).length+' pieces mixed with love ♡'))}</p><div class="dressing-toolbar"><button type="button" data-dr-edit="${esc(idea.id)}">♡ Try on</button><button type="button" data-dr-delete="${esc(idea.id)}">Delete</button></div></article>`}).join(''):`<div class="dressing-empty">Your outfit scrapbook is waiting. Mix a few pieces, give your look a name, then save it here. ♡</div>`;root.querySelectorAll('[data-dr-edit]').forEach(b=>b.onclick=()=>drOpenIdea(b.dataset.drEdit));root.querySelectorAll('[data-dr-delete]').forEach(b=>b.onclick=()=>drDeleteIdea(b.dataset.drDelete))}
 function drOpenIdea(id){const idea=drCurrentIdeas().find(x=>x.id===id);if(!idea)return;drEditing=id;drPieces=(idea.pieces||[]).map(drSanitizePiece);drSelected=-1;$('dressingTitle').value=idea.title||'';$('dressingNotes').value=idea.notes||'';drNote('Outfit idea ready to edit ♡');drDraw();$('dressingMirror').scrollIntoView({behavior:'smooth',block:'nearest'})}
 async function drDeleteIdea(id){if(!confirm('Delete this saved outfit idea? The original clothing Polaroids will stay in the closet.'))return;const idea=drIdeas.find(x=>x.id===id);if(!idea)return;try{if(user){const {error}=await client.from('closet_outfit_ideas').delete().eq('id',id);if(error)throw error}else{drIdeas=drIdeas.filter(x=>x.id!==id);if(!drSaveLocal())throw Error('Browser storage blocked')}if(drEditing===id)drReset();await drRefreshIdeas();drNote('Outfit idea removed; your clothing is safe.')}catch(e){drNote('Could not delete outfit: '+e.message)}}
 function drReset(){drPieces=[];drSelected=-1;drEditing=null;if($('dressingTitle'))$('dressingTitle').value='';if($('dressingNotes'))$('dressingNotes').value='';drDraw()}
 async function drSaveIdea(){if(drBusy)return;if(!drPieces.length){drNote('Pick at least one piece from your clothing rack first. ♡');return}const title=$('dressingTitle').value.trim();if(!title){drNote('Give your outfit idea a little name before saving. ♡');$('dressingTitle').focus();return}drBusy=true;$('dressingSave').disabled=true;drNote('Saving your outfit idea…');const id=drEditing||newId(),pieces=drPieces.map(drSanitizePiece),notes=$('dressingNotes').value.trim();try{if(user){const {error}=await client.from('closet_outfit_ideas').upsert({id,owner_id:user.id,person,title:title.slice(0,100),notes:notes.slice(0,600),pieces,updated_at:new Date().toISOString()});if(error)throw error}else{const old=drIdeas.find(x=>x.id===id);const idea={id,person,title,notes,pieces,created_at:old?.created_at||new Date().toISOString(),updated_at:new Date().toISOString()};drIdeas=[idea,...drIdeas.filter(x=>x.id!==id)];if(!drSaveLocal())throw Error('Your browser blocked storage; please use a normal Safari tab or sign in to cloud.')}drEditing=id;await drRefreshIdeas();drNote('♡ Saved! Your look is tucked into our outfit scrapbook.')}catch(e){drNote('Not saved: '+e.message)}finally{drBusy=false;$('dressingSave').disabled=false}}
-function drInitRoom(){const root=$('grid');if(!root)return;root.className='dressing-lounge';root.innerHTML=drTemplate();$('dressingCategory').innerHTML='<option value="">All clothing</option>'+Object.keys(taxonomy()).filter(k=>k!=='Outfits').map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join('');$('dressingSearch').oninput=drPaintRack;$('dressingCategory').onchange=drPaintRack;$('dressingSmaller').onclick=()=>{const p=drPieces[drSelected];if(p){p.w=Math.max(15,p.w-5);drDraw()}};$('dressingBigger').onclick=()=>{const p=drPieces[drSelected];if(p){p.w=Math.min(52,p.w+5);drDraw()}};$('dressingFront').onclick=()=>{const p=drPieces[drSelected];if(p){p.z=Math.min(50,Math.max(1,...drPieces.map(x=>x.z||1))+1);drDraw()}};$('dressingRemove').onclick=()=>{if(drSelected>=0){drPieces.splice(drSelected,1);drSelected=-1;drDraw()}};$('dressingClear').onclick=()=>{drReset();drNote('Your mirror is ready for another look. ♡')};$('dressingSave').onclick=drSaveIdea;const mirror=$('dressingMirror');mirror.ondragover=e=>{e.preventDefault();e.dataTransfer.dropEffect='copy'};mirror.ondrop=e=>{e.preventDefault();const id=e.dataTransfer.getData('text/plain');if(id)drAdd(id,{x:e.clientX,y:e.clientY})};drPaintRack();drDraw();drPaintSaved()}
+// The wardrobe is a transient picker, not another page. Clothing and outfit data remain untouched.
+function drOpenRack(){
+ const sheet=$('dressingRackSheet'),toggle=$('dressingRackToggle');
+ if(!sheet||!toggle)return;
+ sheet.hidden=false;sheet.setAttribute('aria-hidden','false');
+ toggle.setAttribute('aria-expanded','true');
+ document.body.classList.add('rack-sheet-open');
+ drPaintRack();
+ $('dressingSearch')?.focus({preventScroll:true});
+}
+function drCloseRack(restoreFocus=true){
+ const sheet=$('dressingRackSheet');
+ if(sheet){sheet.hidden=true;sheet.setAttribute('aria-hidden','true');}
+ const toggle=$('dressingRackToggle');
+ if(toggle){toggle.setAttribute('aria-expanded','false');if(restoreFocus&&sheet)toggle.focus({preventScroll:true});}
+ document.body.classList.remove('rack-sheet-open');
+}
+// Modal keyboard handling: Esc closes, Tab stays inside the rack while it is open.
+function drRackKeydown(event){
+ const sheet=$('dressingRackSheet');if(!sheet||sheet.hidden)return;
+ if(event.key==='Escape'){event.preventDefault();drCloseRack();return;}
+ if(event.key!=='Tab')return;
+ const elements=[...sheet.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled])')].filter(x=>x.getClientRects().length);
+ if(!elements.length)return;
+ const first=elements[0],last=elements[elements.length-1];
+ if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+ else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+}
+function drInitRoom(){const root=$('grid');if(!root)return;drCloseRack(false);document.getElementById('dressingRackSheet')?.remove();root.className='dressing-lounge';root.innerHTML=drTemplate();document.body.appendChild($('dressingRackSheet'));$('dressingRackToggle').onclick=drOpenRack;$('dressingRackClose').onclick=()=>drCloseRack();$('dressingRackBackdrop').onclick=()=>drCloseRack();$('dressingCategory').innerHTML='<option value="">All clothing</option>'+Object.keys(taxonomy()).filter(k=>k!=='Outfits').map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join('');$('dressingSearch').oninput=drPaintRack;$('dressingCategory').onchange=drPaintRack;$('dressingSmaller').onclick=()=>{const p=drPieces[drSelected];if(p){p.w=Math.max(15,p.w-5);drDraw()}};$('dressingBigger').onclick=()=>{const p=drPieces[drSelected];if(p){p.w=Math.min(52,p.w+5);drDraw()}};$('dressingFront').onclick=()=>{const p=drPieces[drSelected];if(p){p.z=Math.min(50,Math.max(1,...drPieces.map(x=>x.z||1))+1);drDraw()}};$('dressingRemove').onclick=()=>{if(drSelected>=0){drPieces.splice(drSelected,1);drSelected=-1;drDraw()}};$('dressingClear').onclick=()=>{drReset();drNote('Your mirror is ready for another look. ♡')};$('dressingSave').onclick=drSaveIdea;const mirror=$('dressingMirror');mirror.ondragover=e=>{e.preventDefault();e.dataTransfer.dropEffect='copy'};mirror.ondrop=e=>{e.preventDefault();const id=e.dataTransfer.getData('text/plain');if(id)drAdd(id,{x:e.clientX,y:e.clientY})};drPaintRack();drDraw();drPaintSaved()}
+document.addEventListener('keydown',drRackKeydown);
 // Only outfit ideas get edited by this module; clothing item CRUD remains unchanged.
 
 async function init(){await loadLocal();await refresh();const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';script.async=true;script.onload=connectCloud;script.onerror=()=>{setStatus('Browser photo closet is ready','Cloud login unavailable, but local Polaroid photo saving works in this browser.');};document.head.appendChild(script)}init();
