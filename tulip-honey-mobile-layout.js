@@ -1,30 +1,71 @@
 /*
- * Installed-iPhone status-bar wallpaper fix.
- * index.html already declares viewport-fit=cover and black-translucent.
- * Its html background is transparent, so iOS can expose a white status area.
- * Paint ONLY that root canvas with the existing body wallpaper; leave the
- * closet contents, image data, positioning, and navigation untouched.
+ * iOS Home Screen / standalone status-bar wallpaper fix.
+ * The document root must paint the same winter artwork as the body because
+ * iOS can expose the root canvas in the translucent status-bar safe area.
+ * This only mirrors existing background paint; it does not change app layout.
  */
 (() => {
   'use strict';
-  if (!/iPhone/i.test(navigator.userAgent)) return;
-  if (!(navigator.standalone === true ||
-        window.matchMedia('(display-mode: standalone)').matches)) return;
+  const standalone = () =>
+    navigator.standalone === true ||
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.matchMedia('(display-mode: fullscreen)').matches;
 
   function paintStatusArea() {
     const body = document.body;
-    if (!body || !body.classList.contains('winter-closet')) return;
-    const wallpaper = getComputedStyle(body);
     const root = document.documentElement;
-    root.style.setProperty('background-image', wallpaper.backgroundImage, 'important');
-    root.style.setProperty('background-size', wallpaper.backgroundSize, 'important');
-    root.style.setProperty('background-position', wallpaper.backgroundPosition, 'important');
-    root.style.setProperty('background-repeat', wallpaper.backgroundRepeat, 'important');
-    root.style.setProperty('background-color', wallpaper.backgroundColor, 'important');
+    if (!body || !root || !standalone() ||
+        !body.classList.contains('winter-closet')) return;
+
+    const wallpaper = getComputedStyle(body);
+    // Copy every background layer property, not just the image. The body's
+    // winter wallpaper is data-URI based, so this does not require a network.
+    for (const property of [
+      'background-image',
+      'background-size',
+      'background-position',
+      'background-repeat',
+      'background-attachment',
+      'background-origin',
+      'background-clip'
+    ]) {
+      root.style.setProperty(property, wallpaper.getPropertyValue(property), 'important');
+    }
+    // Keep a deep winter-plum fallback underneath the wallpaper if WebKit
+    // temporarily fails to paint a data-URI background during app startup.
+    root.style.setProperty('background-color', '#713656', 'important');
+    root.style.setProperty('min-height', '100%', 'important');
+    root.style.setProperty('-webkit-text-size-adjust', '100%', 'important');
   }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', paintStatusArea, {once:true});
-  } else paintStatusArea();
+
+  function schedulePaint() {
+    // The visual controller adds .winter-closet during startup. Repaint after
+    // startup and on iOS app restoration/rotation, when WebKit can reset canvas.
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', paintStatusArea, { once: true });
+    } else {
+      paintStatusArea();
+    }
+  }
+
+  schedulePaint();
+  window.addEventListener('pageshow', schedulePaint);
+  window.addEventListener('orientationchange', schedulePaint);
+  window.addEventListener('resize', schedulePaint);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) schedulePaint();
+  });
+
+  const observer = new MutationObserver(() => {
+    if (document.body?.classList.contains('winter-closet')) paintStatusArea();
+  });
+  if (document.documentElement) {
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+      subtree: true
+    });
+  }
 })();
 
 /*
