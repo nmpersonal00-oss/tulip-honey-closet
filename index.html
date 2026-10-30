@@ -977,7 +977,7 @@ async function init(){await loadLocal();await refresh();const script=document.cr
   syncWinter();
 })();
 </script>
-<script defer src="./tulip-honey-mobile-layout.js?v=20261029-ios-safe-area"></script>
+<script defer src="./tulip-honey-mobile-layout.js?v=20261029-viewport-preview-2"></script>
 
 <script id="ios-gesture-guard">
 (function(){
@@ -1011,6 +1011,12 @@ async function init(){await loadLocal();await refresh();const script=document.cr
   document.addEventListener('touchmove',function(e){
     if(startY===null||e.touches.length!==1||!e.cancelable)return;
     if(e.target.closest('.rack-sheet-panel,.winter-sheet,.modal-inner,.dressing-mirror,.dressing-items,input,textarea,select'))return;
+    // The mobile wardrobe now scrolls within #appShell, not the document.
+    // The legacy root-boundary guard would otherwise cancel every swipe.
+    // CSS overscroll-behavior on #appShell keeps the wallpaper in place.
+    const wardrobe=document.getElementById('appShell');
+    if(wardrobe&&matchMedia('(max-width:720px)').matches&&
+       /^(auto|scroll)$/.test(getComputedStyle(wardrobe).overflowY))return;
     const delta=e.touches[0].clientY-startY;
     const root=document.scrollingElement||document.documentElement;
     const atTop=root.scrollTop<=0&&delta>1;
