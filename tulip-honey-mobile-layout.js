@@ -437,3 +437,63 @@
     document.addEventListener('DOMContentLoaded',startCounter,{once:true});
   else startCounter();
 })();
+
+
+/*
+ * Installed iPhone background continuity (iOS Home Screen).
+ * index.html already declares viewport-fit=cover and black-translucent.
+ * Its later "statusbar-art-only-fix" CSS sets html background transparent
+ * !important, so iOS exposes a blank root canvas above the wallpaper body.
+ * Mirror the actual active wardrobe wallpaper onto the root canvas instead.
+ * No viewport height guessing, image resampling, or navigation repositioning.
+ */
+(() => {
+  'use strict';
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isStandalone = navigator.standalone === true ||
+    matchMedia('(display-mode: standalone)').matches;
+  if (!isIOS || !isStandalone) return;
+
+  const style = document.createElement('style');
+  style.id = 'th-ios-root-wallpaper-style';
+  style.textContent = `
+    /* The root canvas, including the iPhone safe area, must be painted. */
+    html.th-ios-wallpaper {
+      min-height: 100%;
+      background-repeat: no-repeat !important;
+      background-attachment: fixed !important;
+    }
+    html.th-ios-wallpaper body.winter-closet {
+      min-height: 100svh;
+      min-height: 100dvh;
+    }
+  `;
+  document.head.appendChild(style);
+
+  function syncWallpaper() {
+    const body = document.body;
+    if (!body || !body.classList.contains('winter-closet')) return;
+    const root = document.documentElement;
+    const wallpaper = getComputedStyle(body);
+    root.classList.add('th-ios-wallpaper');
+    // The body has different original images for wife and husband.
+    // Preserve both background layers, their proportions, and their position.
+    for (const property of [
+      'background-image','background-position','background-size',
+      'background-repeat','background-attachment','background-color'
+    ]) {
+      root.style.setProperty(property, wallpaper.getPropertyValue(property), 'important');
+    }
+  }
+  function start() {
+    syncWallpaper();
+    // Switching closets changes the image via body[data-closet].
+    new MutationObserver(syncWallpaper).observe(document.body, {
+      attributes:true, attributeFilter:['class','data-closet']
+    });
+  }
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded',start,{once:true});
+  else start();
+})();
