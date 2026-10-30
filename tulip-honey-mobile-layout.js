@@ -1,36 +1,30 @@
 /*
- * Installed iPhone only — allow the existing closet artwork to extend behind
- * the iOS status bar instead of leaving the default opaque white strip.
- * No wardrobe, navigation, illustration, or desktop layout changes.
+ * Installed-iPhone status-bar wallpaper fix.
+ * index.html already declares viewport-fit=cover and black-translucent.
+ * Its html background is transparent, so iOS can expose a white status area.
+ * Paint ONLY that root canvas with the existing body wallpaper; leave the
+ * closet contents, image data, positioning, and navigation untouched.
  */
 (() => {
   'use strict';
-  const installed = navigator.standalone === true ||
-    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-  const phone = /iPhone/i.test(navigator.userAgent);
-  if (!installed || !phone) return;
+  if (!/iPhone/i.test(navigator.userAgent)) return;
+  if (!(navigator.standalone === true ||
+        window.matchMedia('(display-mode: standalone)').matches)) return;
 
-  const viewport = document.querySelector('meta[name="viewport"]');
-  if (viewport && !/viewport-fit\s*=/.test(viewport.content)) {
-    viewport.content += ', viewport-fit=cover';
+  function paintStatusArea() {
+    const body = document.body;
+    if (!body || !body.classList.contains('winter-closet')) return;
+    const wallpaper = getComputedStyle(body);
+    const root = document.documentElement;
+    root.style.setProperty('background-image', wallpaper.backgroundImage, 'important');
+    root.style.setProperty('background-size', wallpaper.backgroundSize, 'important');
+    root.style.setProperty('background-position', wallpaper.backgroundPosition, 'important');
+    root.style.setProperty('background-repeat', wallpaper.backgroundRepeat, 'important');
+    root.style.setProperty('background-color', wallpaper.backgroundColor, 'important');
   }
-
-  let statusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-  if (!statusBar) {
-    statusBar = document.createElement('meta');
-    statusBar.name = 'apple-mobile-web-app-status-bar-style';
-    document.head.appendChild(statusBar);
-  }
-  statusBar.content = 'black-translucent';
-
-  // Extend the page's existing background, rather than replacing its artwork.
-  const style = document.createElement('style');
-  style.id = 'th-installed-iphone-status-bar-fix';
-  style.textContent = `
-    html, body { min-height:100%; }
-    body { min-height:100vh; min-height:100dvh; }
-  `;
-  document.head.appendChild(style);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', paintStatusArea, {once:true});
+  } else paintStatusArea();
 })();
 
 /*
