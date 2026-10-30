@@ -438,85 +438,62 @@
   else startCounter();
 })();
 
+
 /*
- * Installed iPhone safe area: let the existing wallpaper paint behind the
- * status bar / Dynamic Island instead of leaving the white webview gutter.
- * This runs separately from the wardrobe UI so records and navigation stay intact.
+ * Installed iPhone background continuity (iOS Home Screen).
+ * index.html already declares viewport-fit=cover and black-translucent.
+ * Its later "statusbar-art-only-fix" CSS sets html background transparent
+ * !important, so iOS exposes a blank root canvas above the wallpaper body.
+ * Mirror the actual active wardrobe wallpaper onto the root canvas instead.
+ * No viewport height guessing, image resampling, or navigation repositioning.
  */
 (() => {
   'use strict';
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const installed = window.navigator.standalone === true ||
-    window.matchMedia('(display-mode: standalone)').matches;
-  if (!isIOS || !installed) return;
-
-  // Viewport-fit enables content to extend into iPhone safe areas. Preserve
-  // all other viewport directives already used by the application.
-  let viewport = document.querySelector('meta[name="viewport"]');
-  if (!viewport) {
-    viewport = document.createElement('meta');
-    viewport.name = 'viewport';
-    document.head.appendChild(viewport);
-  }
-  const directives = (viewport.content || '').split(',').map(x => x.trim()).filter(Boolean)
-    .filter(x => !/^viewport-fit\s*=/.test(x));
-  directives.push('viewport-fit=cover');
-  viewport.content = directives.join(', ');
-
-  // This iOS mode permits the wallpaper under the native status-bar area.
-  // iOS may cache Home Screen metadata until the shortcut is reinstalled.
-  let statusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-  if (!statusBar) {
-    statusBar = document.createElement('meta');
-    statusBar.name = 'apple-mobile-web-app-status-bar-style';
-    document.head.appendChild(statusBar);
-  }
-  statusBar.content = 'black-translucent';
+  const isStandalone = navigator.standalone === true ||
+    matchMedia('(display-mode: standalone)').matches;
+  if (!isIOS || !isStandalone) return;
 
   const style = document.createElement('style');
-  style.id = 'th-ios-wallpaper-safe-area';
+  style.id = 'th-ios-root-wallpaper-style';
   style.textContent = `
-    @supports (padding-top: env(safe-area-inset-top)) {
-      html.th-ios-standalone {
-        min-height: 100%;
-        background-attachment: fixed;
-      }
-      html.th-ios-standalone body {
-        min-height: 100vh;
-        min-height: 100dvh;
-      }
-      html.th-ios-standalone .app {
-        /* Keep the header below the clock while the wallpaper extends above it. */
-        padding-top: max(12px, env(safe-area-inset-top));
-      }
+    /* The root canvas, including the iPhone safe area, must be painted. */
+    html.th-ios-wallpaper {
+      min-height: 100%;
+      background-repeat: no-repeat !important;
+      background-attachment: fixed !important;
+    }
+    html.th-ios-wallpaper body.winter-closet {
+      min-height: 100svh;
+      min-height: 100dvh;
     }
   `;
   document.head.appendChild(style);
 
   function syncWallpaper() {
-    const root = document.documentElement;
     const body = document.body;
-    if (!body) return;
-    root.classList.add('th-ios-standalone');
-    // Reuse the actual wardrobe wallpaper; never replace or regenerate assets.
-    // The root canvas extends into areas not painted by the body on iOS.
-    const candidates = [body, document.querySelector('.app')].filter(Boolean);
-    const source = candidates.find(el => getComputedStyle(el).backgroundImage !== 'none');
-    if (source) {
-      const bg = getComputedStyle(source);
-      root.style.backgroundImage = bg.backgroundImage;
-      root.style.backgroundSize = bg.backgroundSize;
-      root.style.backgroundPosition = bg.backgroundPosition;
-      root.style.backgroundRepeat = bg.backgroundRepeat;
-      root.style.backgroundColor = bg.backgroundColor;
-    } else {
-      root.style.backgroundColor = getComputedStyle(body).backgroundColor;
+    if (!body || !body.classList.contains('winter-closet')) return;
+    const root = document.documentElement;
+    const wallpaper = getComputedStyle(body);
+    root.classList.add('th-ios-wallpaper');
+    // The body has different original images for wife and husband.
+    // Preserve both background layers, their proportions, and their position.
+    for (const property of [
+      'background-image','background-position','background-size',
+      'background-repeat','background-attachment','background-color'
+    ]) {
+      root.style.setProperty(property, wallpaper.getPropertyValue(property), 'important');
     }
   }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', syncWallpaper, {once:true});
-  } else {
+  function start() {
     syncWallpaper();
+    // Switching closets changes the image via body[data-closet].
+    new MutationObserver(syncWallpaper).observe(document.body, {
+      attributes:true, attributeFilter:['class','data-closet']
+    });
   }
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded',start,{once:true});
+  else start();
 })();
