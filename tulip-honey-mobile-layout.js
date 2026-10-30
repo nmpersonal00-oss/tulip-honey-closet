@@ -1,4 +1,33 @@
 /*
+ * Installed-iPhone status-bar wallpaper fix.
+ * index.html already declares viewport-fit=cover and black-translucent.
+ * Its html background is transparent, so iOS can expose a white status area.
+ * Paint ONLY that root canvas with the existing body wallpaper; leave the
+ * closet contents, image data, positioning, and navigation untouched.
+ */
+(() => {
+  'use strict';
+  if (!/iPhone/i.test(navigator.userAgent)) return;
+  if (!(navigator.standalone === true ||
+        window.matchMedia('(display-mode: standalone)').matches)) return;
+
+  function paintStatusArea() {
+    const body = document.body;
+    if (!body || !body.classList.contains('winter-closet')) return;
+    const wallpaper = getComputedStyle(body);
+    const root = document.documentElement;
+    root.style.setProperty('background-image', wallpaper.backgroundImage, 'important');
+    root.style.setProperty('background-size', wallpaper.backgroundSize, 'important');
+    root.style.setProperty('background-position', wallpaper.backgroundPosition, 'important');
+    root.style.setProperty('background-repeat', wallpaper.backgroundRepeat, 'important');
+    root.style.setProperty('background-color', wallpaper.backgroundColor, 'important');
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', paintStatusArea, {once:true});
+  } else paintStatusArea();
+})();
+
+/*
  * Tulip & Honey Closet — iPhone layout only, v7.1 (V7 layout + category counter; normal scrolling; four tabs).
  * Original wardrobe records, storage, Supabase authentication and cloud code remain untouched.
  * Desktop layout remains unchanged. No external resources or analytics are loaded.
