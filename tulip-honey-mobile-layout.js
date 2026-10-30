@@ -469,6 +469,12 @@
     @media(max-width:720px) {
       html, body {overscroll-behavior:none!important;}
       body {background-color:#713656!important;}
+      #thStatusWallpaper {
+        position:fixed;top:0;left:0;right:0;
+        height:env(safe-area-inset-top,0px);
+        z-index:70;pointer-events:none;
+        background-repeat:no-repeat;
+      }
       #thFixedWallpaper {
         position:fixed;inset:0;z-index:0;pointer-events:none;
         background-repeat:no-repeat;background-position:center;
@@ -510,6 +516,28 @@
       const value = image.getPropertyValue(name);
       layer.style.setProperty(name,value);
       if (standalone) root.style.setProperty(name,value,'important');
+    }
+    // Paint only the iPhone's top status-bar safe area. No changes to the
+    // app dimensions, scrolling, bottom navigation, or wallpaper artwork.
+    let top = document.getElementById('thStatusWallpaper');
+    if (!top) {
+      top = document.createElement('div');
+      top.id = 'thStatusWallpaper';
+      top.setAttribute('aria-hidden','true');
+      body.insertBefore(top,body.firstChild);
+    }
+    for (const name of ['background-image','background-repeat','background-color']) {
+      top.style.setProperty(name,image.getPropertyValue(name));
+    }
+    // Align the top strip's wallpaper to the complete screen, rather than
+    // scaling the full picture into the height of the status bar.
+    top.style.backgroundSize = '100% var(--th-screen-height,100dvh)';
+    top.style.backgroundPosition = 'center top';
+    if (standalone) {
+      root.style.backgroundImage = image.getPropertyValue('background-image');
+      root.style.backgroundSize = image.getPropertyValue('background-size');
+      root.style.backgroundPosition = image.getPropertyValue('background-position');
+      root.style.backgroundColor = image.getPropertyValue('background-color');
     }
     // The artwork itself stays fixed while only .app contents scroll.
     layer.style.backgroundAttachment = 'scroll';
