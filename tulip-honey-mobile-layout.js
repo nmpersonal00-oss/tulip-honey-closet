@@ -1,74 +1,4 @@
 /*
- * iOS Home Screen / standalone status-bar wallpaper fix.
- * The document root must paint the same winter artwork as the body because
- * iOS can expose the root canvas in the translucent status-bar safe area.
- * This only mirrors existing background paint; it does not change app layout.
- */
-(() => {
-  'use strict';
-  const standalone = () =>
-    navigator.standalone === true ||
-    window.matchMedia('(display-mode: standalone)').matches ||
-    window.matchMedia('(display-mode: fullscreen)').matches;
-
-  function paintStatusArea() {
-    const body = document.body;
-    const root = document.documentElement;
-    if (!body || !root || !standalone() ||
-        !body.classList.contains('winter-closet')) return;
-
-    const wallpaper = getComputedStyle(body);
-    // Copy every background layer property, not just the image. The body's
-    // winter wallpaper is data-URI based, so this does not require a network.
-    for (const property of [
-      'background-image',
-      'background-size',
-      'background-position',
-      'background-repeat',
-      'background-attachment',
-      'background-origin',
-      'background-clip'
-    ]) {
-      root.style.setProperty(property, wallpaper.getPropertyValue(property), 'important');
-    }
-    // Keep a deep winter-plum fallback underneath the wallpaper if WebKit
-    // temporarily fails to paint a data-URI background during app startup.
-    root.style.setProperty('background-color', '#713656', 'important');
-    root.style.setProperty('min-height', '100%', 'important');
-    root.style.setProperty('-webkit-text-size-adjust', '100%', 'important');
-  }
-
-  function schedulePaint() {
-    // The visual controller adds .winter-closet during startup. Repaint after
-    // startup and on iOS app restoration/rotation, when WebKit can reset canvas.
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', paintStatusArea, { once: true });
-    } else {
-      paintStatusArea();
-    }
-  }
-
-  schedulePaint();
-  window.addEventListener('pageshow', schedulePaint);
-  window.addEventListener('orientationchange', schedulePaint);
-  window.addEventListener('resize', schedulePaint);
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) schedulePaint();
-  });
-
-  const observer = new MutationObserver(() => {
-    if (document.body?.classList.contains('winter-closet')) paintStatusArea();
-  });
-  if (document.documentElement) {
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class'],
-      subtree: true
-    });
-  }
-})();
-
-/*
  * Tulip & Honey Closet — iPhone layout only, v7.1 (V7 layout + category counter; normal scrolling; four tabs).
  * Original wardrobe records, storage, Supabase authentication and cloud code remain untouched.
  * Desktop layout remains unchanged. No external resources or analytics are loaded.
@@ -188,14 +118,21 @@
     stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
   .app>.footer { margin-bottom:8px; }
 }
-/* V6: Keep the page itself scrollable. The wardrobe wall can scroll locally,
-   but no viewport/body scroll lock is applied. */
+/* iPhone: scroll inside the bounded app viewport, never the page canvas. */
 #thMobileBrowse {display:none;}
 @media ${MOBILE_QUERY} {
-  html {height:auto!important;min-height:100%;overflow-y:auto!important;scroll-behavior:auto;}
-  body {height:auto!important;min-height:100dvh;overflow-y:auto!important;overflow-x:hidden;}
-  .app {height:auto!important;min-height:100dvh;max-height:none!important;
-    overflow:visible!important;padding:12px 12px calc(110px + env(safe-area-inset-bottom));}
+  /* One bounded screen, with scrolling inside the app rather than under iOS chrome. */
+  html,body {height:100%!important;min-height:0!important;overflow:hidden!important;
+    overscroll-behavior:none!important;}
+  body {width:100%!important;margin:0!important;}
+  .app {position:relative!important;z-index:1;box-sizing:border-box!important;
+    width:100%!important;max-width:100%!important;margin:0!important;
+    height:100vh!important;height:100dvh!important;
+    height:var(--th-screen-height,100dvh)!important;
+    min-height:0!important;max-height:none!important;
+    overflow-x:hidden!important;overflow-y:auto!important;
+    overscroll-behavior-y:contain!important;-webkit-overflow-scrolling:touch;
+    padding:12px 12px calc(110px + env(safe-area-inset-bottom))!important;}
   .app>header {height:auto;overflow:visible;}
   .app>.hero {display:none!important;}
   .app>.layout {display:flex;flex-direction:column;gap:12px;min-height:0;
@@ -509,61 +446,87 @@
 })();
 
 
+
 /*
- * Installed iPhone background continuity (iOS Home Screen).
- * index.html already declares viewport-fit=cover and black-translucent.
- * Its later "statusbar-art-only-fix" CSS sets html background transparent
- * !important, so iOS exposes a blank root canvas above the wallpaper body.
- * Mirror the actual active wardrobe wallpaper onto the root canvas instead.
- * No viewport height guessing, image resampling, or navigation repositioning.
+ * Single iPhone wallpaper + viewport controller.
+ * Preserve the wardrobe's existing wife/husband artwork; paint a fixed copy
+ * behind the scrolling content and fill the installed iPhone display.
+ * No user data, artwork assets, or desktop rules are changed.
  */
 (() => {
   'use strict';
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const isStandalone = navigator.standalone === true ||
+  const mq = matchMedia('(max-width: 720px)');
+  const standalone = navigator.standalone === true ||
     matchMedia('(display-mode: standalone)').matches;
-  if (!isIOS || !isStandalone) return;
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (!ios || !mq.matches) return;
 
-  const style = document.createElement('style');
-  style.id = 'th-ios-root-wallpaper-style';
-  style.textContent = `
-    /* The root canvas, including the iPhone safe area, must be painted. */
-    html.th-ios-wallpaper {
-      min-height: 100%;
-      background-repeat: no-repeat !important;
-      background-attachment: fixed !important;
-    }
-    html.th-ios-wallpaper body.winter-closet {
-      min-height: 100svh;
-      min-height: 100dvh;
+  const root = document.documentElement;
+  const mobileStyle = document.createElement('style');
+  mobileStyle.id = 'th-viewport-wallpaper-fix';
+  mobileStyle.textContent = `
+    @media(max-width:720px) {
+      html, body {overscroll-behavior:none!important;}
+      body {background-color:#713656!important;}
+      #thFixedWallpaper {
+        position:fixed;inset:0;z-index:0;pointer-events:none;
+        background-repeat:no-repeat;background-position:center;
+        transform:translateZ(0);
+      }
+      body > .app {position:relative!important;z-index:1;}
+      #thMobileNav {position:fixed!important;}
     }
   `;
-  document.head.appendChild(style);
+  document.head.appendChild(mobileStyle);
+
+  function resize() {
+    if (!mq.matches) return;
+    // Mirror the installed Kitchen's screen-height correction; in Safari use
+    // only the visible viewport so browser toolbar never obscures navigation.
+    const visible = Math.max(window.innerHeight || 0,
+      root.clientHeight || 0, window.visualViewport?.height || 0);
+    const device = matchMedia('(orientation:landscape)').matches
+      ? Math.min(screen.width,screen.height)
+      : Math.max(screen.width,screen.height);
+    const height = standalone ? Math.max(visible,screen.availHeight || 0,device) : visible;
+    if (height >= 400 && height < 6000)
+      root.style.setProperty('--th-screen-height',Math.ceil(height)+'px');
+  }
 
   function syncWallpaper() {
     const body = document.body;
     if (!body || !body.classList.contains('winter-closet')) return;
-    const root = document.documentElement;
-    const wallpaper = getComputedStyle(body);
-    root.classList.add('th-ios-wallpaper');
-    // The body has different original images for wife and husband.
-    // Preserve both background layers, their proportions, and their position.
-    for (const property of [
-      'background-image','background-position','background-size',
-      'background-repeat','background-attachment','background-color'
-    ]) {
-      root.style.setProperty(property, wallpaper.getPropertyValue(property), 'important');
+    let layer = document.getElementById('thFixedWallpaper');
+    if (!layer) {
+      layer = document.createElement('div');
+      layer.id = 'thFixedWallpaper';
+      layer.setAttribute('aria-hidden','true');
+      body.insertBefore(layer,body.firstChild);
     }
+    const image = getComputedStyle(body);
+    for (const name of ['background-image','background-size','background-position',
+      'background-repeat','background-color']) {
+      const value = image.getPropertyValue(name);
+      layer.style.setProperty(name,value);
+      if (standalone) root.style.setProperty(name,value,'important');
+    }
+    // The artwork itself stays fixed while only .app contents scroll.
+    layer.style.backgroundAttachment = 'scroll';
+    if (standalone) root.style.backgroundAttachment = 'fixed';
   }
   function start() {
+    resize();
     syncWallpaper();
-    // Switching closets changes the image via body[data-closet].
-    new MutationObserver(syncWallpaper).observe(document.body, {
-      attributes:true, attributeFilter:['class','data-closet']
+    new MutationObserver(syncWallpaper).observe(document.body,{
+      attributes:true,attributeFilter:['class','data-closet']
     });
   }
   if (document.readyState === 'loading')
     document.addEventListener('DOMContentLoaded',start,{once:true});
   else start();
+  window.addEventListener('resize',resize,{passive:true});
+  window.addEventListener('orientationchange',resize,{passive:true});
+  window.visualViewport?.addEventListener('resize',resize,{passive:true});
+  window.addEventListener('pageshow',()=>{resize();syncWallpaper();});
 })();
