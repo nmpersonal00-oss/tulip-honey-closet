@@ -1,4 +1,39 @@
 /*
+ * Installed iPhone only — allow the existing closet artwork to extend behind
+ * the iOS status bar instead of leaving the default opaque white strip.
+ * No wardrobe, navigation, illustration, or desktop layout changes.
+ */
+(() => {
+  'use strict';
+  const installed = navigator.standalone === true ||
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  const phone = /iPhone/i.test(navigator.userAgent);
+  if (!installed || !phone) return;
+
+  const viewport = document.querySelector('meta[name="viewport"]');
+  if (viewport && !/viewport-fit\s*=/.test(viewport.content)) {
+    viewport.content += ', viewport-fit=cover';
+  }
+
+  let statusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+  if (!statusBar) {
+    statusBar = document.createElement('meta');
+    statusBar.name = 'apple-mobile-web-app-status-bar-style';
+    document.head.appendChild(statusBar);
+  }
+  statusBar.content = 'black-translucent';
+
+  // Extend the page's existing background, rather than replacing its artwork.
+  const style = document.createElement('style');
+  style.id = 'th-installed-iphone-status-bar-fix';
+  style.textContent = `
+    html, body { min-height:100%; }
+    body { min-height:100vh; min-height:100dvh; }
+  `;
+  document.head.appendChild(style);
+})();
+
+/*
  * Tulip & Honey Closet — iPhone layout only, v7.1 (V7 layout + category counter; normal scrolling; four tabs).
  * Original wardrobe records, storage, Supabase authentication and cloud code remain untouched.
  * Desktop layout remains unchanged. No external resources or analytics are loaded.
