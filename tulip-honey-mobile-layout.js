@@ -437,3 +437,86 @@
     document.addEventListener('DOMContentLoaded',startCounter,{once:true});
   else startCounter();
 })();
+
+/*
+ * Installed iPhone safe area: let the existing wallpaper paint behind the
+ * status bar / Dynamic Island instead of leaving the white webview gutter.
+ * This runs separately from the wardrobe UI so records and navigation stay intact.
+ */
+(() => {
+  'use strict';
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const installed = window.navigator.standalone === true ||
+    window.matchMedia('(display-mode: standalone)').matches;
+  if (!isIOS || !installed) return;
+
+  // Viewport-fit enables content to extend into iPhone safe areas. Preserve
+  // all other viewport directives already used by the application.
+  let viewport = document.querySelector('meta[name="viewport"]');
+  if (!viewport) {
+    viewport = document.createElement('meta');
+    viewport.name = 'viewport';
+    document.head.appendChild(viewport);
+  }
+  const directives = (viewport.content || '').split(',').map(x => x.trim()).filter(Boolean)
+    .filter(x => !/^viewport-fit\s*=/.test(x));
+  directives.push('viewport-fit=cover');
+  viewport.content = directives.join(', ');
+
+  // This iOS mode permits the wallpaper under the native status-bar area.
+  // iOS may cache Home Screen metadata until the shortcut is reinstalled.
+  let statusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+  if (!statusBar) {
+    statusBar = document.createElement('meta');
+    statusBar.name = 'apple-mobile-web-app-status-bar-style';
+    document.head.appendChild(statusBar);
+  }
+  statusBar.content = 'black-translucent';
+
+  const style = document.createElement('style');
+  style.id = 'th-ios-wallpaper-safe-area';
+  style.textContent = `
+    @supports (padding-top: env(safe-area-inset-top)) {
+      html.th-ios-standalone {
+        min-height: 100%;
+        background-attachment: fixed;
+      }
+      html.th-ios-standalone body {
+        min-height: 100vh;
+        min-height: 100dvh;
+      }
+      html.th-ios-standalone .app {
+        /* Keep the header below the clock while the wallpaper extends above it. */
+        padding-top: max(12px, env(safe-area-inset-top));
+      }
+    }
+  `;
+  document.head.appendChild(style);
+
+  function syncWallpaper() {
+    const root = document.documentElement;
+    const body = document.body;
+    if (!body) return;
+    root.classList.add('th-ios-standalone');
+    // Reuse the actual wardrobe wallpaper; never replace or regenerate assets.
+    // The root canvas extends into areas not painted by the body on iOS.
+    const candidates = [body, document.querySelector('.app')].filter(Boolean);
+    const source = candidates.find(el => getComputedStyle(el).backgroundImage !== 'none');
+    if (source) {
+      const bg = getComputedStyle(source);
+      root.style.backgroundImage = bg.backgroundImage;
+      root.style.backgroundSize = bg.backgroundSize;
+      root.style.backgroundPosition = bg.backgroundPosition;
+      root.style.backgroundRepeat = bg.backgroundRepeat;
+      root.style.backgroundColor = bg.backgroundColor;
+    } else {
+      root.style.backgroundColor = getComputedStyle(body).backgroundColor;
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', syncWallpaper, {once:true});
+  } else {
+    syncWallpaper();
+  }
+})();
