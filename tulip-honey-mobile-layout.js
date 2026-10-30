@@ -472,7 +472,7 @@
       #thStatusWallpaper {
         position:fixed;top:0;left:0;right:0;
         height:env(safe-area-inset-top,0px);
-        z-index:0;pointer-events:none;
+        z-index:70;pointer-events:none;
         background-repeat:no-repeat;
       }
       #thFixedWallpaper {
